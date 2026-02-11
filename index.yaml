@@ -82,7 +82,7 @@ entries:
       version: 0.2.12
   vulcano:
     - apiVersion: v2
-      appVersion: 1.5.140
+      appVersion: 1.9.12
       created: "2026-02-11T08:42:38.555359+01:00"
       dependencies:
         - alias: mongodb
