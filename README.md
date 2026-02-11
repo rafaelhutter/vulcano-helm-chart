@@ -27,12 +27,12 @@ Vulcano - Complete application deployment with MongoDB, RabbitMQ, and optional C
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| adminUsers | string | `"admin1@domain.com\nadmin2@domain.com\n"` |  |
+| adminUsers | string | `"admin1@domain.com\nadmin2@domain.com\n"` | List of email addresses for users with administrative privileges. One email per line. These users will have full system access including project deletion and user management. |
 | adobe.apiKey | string | `"CCHomeWeb1"` | Adobe API Key for accessing Adobe Creative Cloud services |
 | adobe.clientId | string | `""` | Adobe IMS Client ID for OAuth authentication flow |
 | adobe.clientToken | string | `""` | OAuth access token for Adobe Creative Cloud Libraries API authentication |
 | adobe.dumpFilepath | string | `""` | File path where a JSON dump of all available Adobe CC Libraries elements will be created |
-| adobe.enabled | bool | `false` |  |
+| adobe.enabled | bool | `false` | Enable Adobe Creative Cloud Libraries integration for syncing MOGRT templates |
 | adobe.librariesIgnore | string | `"\"Library to Ignore\""` | Comma-separated list of Adobe Creative Cloud Library names that should be excluded from synchronization |
 | adobe.scan | string | `"false"` | Enable automatic synchronization of Adobe Creative Cloud Libraries every 2 minutes |
 | adobe.secret | string | `""` | Adobe IMS Client Secret for OAuth authentication |
@@ -78,8 +78,8 @@ Vulcano - Complete application deployment with MongoDB, RabbitMQ, and optional C
 | folders.templates | string | `"/data/templates"` | Root directory path containing all After Effects templates and project files |
 | folders.templatesClient | string | `""` | Client-side path mapping for template files |
 | folders.thumbnails | string | `"/data/thumbs"` | Directory path where thumbnail images are stored |
-| folderscanner.mediaFolder.recreateFolderStructure | string | `"true"` |  |
-| folderscanner.mediaFolder.templates.client | string | `"/Volumes/helmut_1/vulcano/highres_templates"` |  |
+| folderscanner.mediaFolder.recreateFolderStructure | string | `"true"` | Recreate the folder structure for media folders |
+| folderscanner.mediaFolder.templates.client | string | `"/Volumes/helmut_1/vulcano/highres_templates"` | Client-side path mapping for template media files. Used to replace server template paths with client-accessible paths in HiresApiDelegateImpl.mapHiresPath() for template folder access |
 | global | object | `{"domain":"vulcano.example.com","namespace":"vulcano-app"}` | Global configuration for the Vulcano deployment |
 | global.domain | string | `"vulcano.example.com"` | Domain name for ingress and services |
 | global.namespace | string | `"vulcano-app"` | Kubernetes namespace for the deployment |
@@ -87,13 +87,13 @@ Vulcano - Complete application deployment with MongoDB, RabbitMQ, and optional C
 | helmut.baseUrl | string | `nil` | Base URL of the Helmut4 server API (e.g., https://helmut.company.com/api) |
 | helmut.clientId | string | `""` | OAuth client identifier for Helmut4 API authentication |
 | helmut.clientSecret | string | `""` | OAuth client secret for secure Helmut4 API authentication |
-| helmut.cosmo.baseBreadcrumb | string | `""` |  |
-| helmut.cosmo.mappingDest | string | `""` |  |
-| helmut.cosmo.mappingSrc | string | `""` |  |
-| helmut.cosmo.sync | string | `"false"` |  |
-| helmut.enabled | bool | `false` |  |
+| helmut.cosmo.baseBreadcrumb | string | `""` | Base breadcrumb path for Helmut4 Cosmo workspace navigation. Defines the starting point for project and asset browsing |
+| helmut.cosmo.mappingDest | string | `""` | Destination path mapping for Helmut4 Cosmo integration. Maps Vulcano asset locations to Cosmo workspace structure |
+| helmut.cosmo.mappingSrc | string | `""` | Source path mapping for Helmut4 Cosmo integration. Maps Cosmo workspace paths to Vulcano internal structure |
+| helmut.cosmo.sync | string | `"false"` | Enable synchronization between Vulcano assets and Helmut4 Cosmo workspace. Keeps asset metadata and status in sync |
+| helmut.enabled | bool | `false` | Enable Helmut4 media asset management system integration |
 | helmut.logRequest | string | `"false"` | Enable detailed logging of HTTP requests made to Helmut4 API |
-| helmut.pageSize | string | `"50"` |  |
+| helmut.pageSize | string | `"50"` | Number of items per page when fetching data from Helmut4 API |
 | housekeeping.enabled | string | `"false"` | Enable automatic cleanup and maintenance tasks |
 | housekeeping.maxAge | string | `"14"` | Maximum age in days for housekeeping items before they are automatically cleaned up |
 | imagePullSecrets | object | `{"enabled":true,"secrets":[{"name":"docker-io"}]}` | Image Pull Secrets configuration |
@@ -139,19 +139,19 @@ Vulcano - Complete application deployment with MongoDB, RabbitMQ, and optional C
 | integrations.vidispine.workflowMogrt | string | `""` | Specific workflow identifier for MOGRT files in Vidispine |
 | integrations.vidispine.workflowVersion | string | `""` | Version number of the default Vidispine workflow to use |
 | integrations.vidispine.workflowVersionMogrt | string | `""` | Version number of the MOGRT-specific workflow in Vidispine |
-| logging.fileMaxSize | string | `"10MB"` |  |
-| logging.fileName | string | `"/data/LOGS/vulcano_k8s.log"` |  |
-| logging.level.org | string | `"INFO"` |  |
-| logging.level.securityFilter | string | `"WARN"` |  |
-| management.endpoint.caches.enabled | string | `"true"` |  |
-| management.endpoint.health.group.readiness.include | string | `"rabbit,diskSpace,mongo,ping"` |  |
-| management.endpoint.health.showDetails | string | `"always"` |  |
-| management.endpoint.prometheus.enabled | string | `"true"` |  |
-| management.endpoints.web.exposure.include | string | `"health,beans,loggers,env,prometheus,metrics"` |  |
-| management.health.livenessstate.enabled | string | `"true"` |  |
-| management.health.livenessstate.showDetails | string | `"always"` |  |
-| management.health.readinessstate.enabled | string | `"true"` |  |
-| management.health.readinessstate.showDetails | string | `"always"` |  |
+| logging.fileMaxSize | string | `"10MB"` | Maximum size of the log file before it gets rotated |
+| logging.fileName | string | `"/data/LOGS/vulcano_k8s.log"` | Path to the log file where application logs are written |
+| logging.level.org | string | `"INFO"` | Logging level for the org package |
+| logging.level.securityFilter | string | `"WARN"` | Logging level for the security filter |
+| management.endpoint.caches.enabled | string | `"true"` | Enable the caches actuator endpoint |
+| management.endpoint.health.group.readiness.include | string | `"rabbit,diskSpace,mongo,ping"` | Components to include in the readiness health check |
+| management.endpoint.health.showDetails | string | `"always"` | When to show full health details in the health endpoint response |
+| management.endpoint.prometheus.enabled | string | `"true"` | Enable the Prometheus actuator endpoint |
+| management.endpoints.web.exposure.include | string | `"health,beans,loggers,env,prometheus,metrics"` | Comma-separated list of actuator endpoints to expose via web |
+| management.health.livenessstate.enabled | string | `"true"` | Enable the liveness state health indicator |
+| management.health.livenessstate.showDetails | string | `"always"` | Show detailed information in liveness state health checks |
+| management.health.readinessstate.enabled | string | `"true"` | Enable the readiness state health indicator |
+| management.health.readinessstate.showDetails | string | `"always"` | Show detailed information in readiness state health checks |
 | management.metrics.distribution.percentilesHistogram | string | `"true"` |  |
 | management.metrics.distribution.slo | string | `"50ms, 100ms, 200ms, 300ms, 500ms, 1s"` |  |
 | management.metrics.enable.all | string | `"true"` |  |
@@ -174,7 +174,7 @@ Vulcano - Complete application deployment with MongoDB, RabbitMQ, and optional C
 | nodeSelector | object | `{}` | Node selector for pod scheduling |
 | octopus.api | string | `""` | API endpoint URL for Octopus newsroom system integration |
 | octopus.client.delayInMS | string | `"1000"` | Delay in milliseconds between Octopus client polling requests |
-| octopus.enabled | bool | `false` |  |
+| octopus.enabled | bool | `false` | Enable Octopus newsroom system integration for receiving MOS messages |
 | octopus.password | string | `""` | Password for authenticating with the Octopus newsroom system |
 | octopus.startClient | string | `"false"` | Enable the Octopus client for receiving and processing MOS messages |
 | octopus.username | string | `""` | Username for authenticating with the Octopus newsroom system |

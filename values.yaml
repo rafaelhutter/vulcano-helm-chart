@@ -258,10 +258,14 @@ smbCsi:
 
 # Logging Configuration
 logging:
+  # -- Path to the log file where application logs are written
   fileName: "/data/LOGS/vulcano_k8s.log"
+  # -- Maximum size of the log file before it gets rotated
   fileMaxSize: "10MB"
   level:
+    # -- Logging level for the org package
     org: "INFO"
+    # -- Logging level for the security filter
     securityFilter: "WARN"
 
 # Management/Metrics Configuration
@@ -269,16 +273,21 @@ management:
   endpoints:
     web:
       exposure:
+        # -- Comma-separated list of actuator endpoints to expose via web
         include: "health,beans,loggers,env,prometheus,metrics"
   endpoint:
     caches:
+      # -- Enable the caches actuator endpoint
       enabled: "true"
     prometheus:
+      # -- Enable the Prometheus actuator endpoint
       enabled: "true"
     health:
+      # -- When to show full health details in the health endpoint response
       showDetails: "always"
       group:
         readiness:
+          # -- Components to include in the readiness health check
           include: "rabbit,diskSpace,mongo,ping"
   prometheus:
     metrics:
@@ -294,10 +303,14 @@ management:
       all: "true"
   health:
     livenessstate:
+      # -- Enable the liveness state health indicator
       enabled: "true"
+      # -- Show detailed information in liveness state health checks
       showDetails: "always"
     readinessstate:
+      # -- Enable the readiness state health indicator
       enabled: "true"
+      # -- Show detailed information in readiness state health checks
       showDetails: "always"
 
 # Spring Framework Configuration
@@ -379,8 +392,10 @@ folderScanner:
 # Additional Scanner Configuration
 folderscanner:
   mediaFolder:
+    # -- Recreate the folder structure for media folders
     recreateFolderStructure: "true"
     templates:
+      # -- Client-side path mapping for template media files. Used to replace server template paths with client-accessible paths in HiresApiDelegateImpl.mapHiresPath() for template folder access
       client: "/Volumes/helmut_1/vulcano/highres_templates"
 
 # Vulcano Integration Configuration
@@ -492,6 +507,7 @@ housekeeping:
 
 # Helmut Configuration
 helmut:
+  # -- Enable Helmut4 media asset management system integration
   enabled: false
   # -- Base URL of the Helmut4 server API (e.g., https://helmut.company.com/api)
   baseUrl:
@@ -503,11 +519,16 @@ helmut:
   clientId: ""
   # -- OAuth client secret for secure Helmut4 API authentication
   clientSecret: ""
+  # -- Number of items per page when fetching data from Helmut4 API
   pageSize: "50"
   cosmo:
+    # -- Base breadcrumb path for Helmut4 Cosmo workspace navigation. Defines the starting point for project and asset browsing
     baseBreadcrumb: ""
+    # -- Destination path mapping for Helmut4 Cosmo integration. Maps Vulcano asset locations to Cosmo workspace structure
     mappingDest: ""
+    # -- Source path mapping for Helmut4 Cosmo integration. Maps Cosmo workspace paths to Vulcano internal structure
     mappingSrc: ""
+    # -- Enable synchronization between Vulcano assets and Helmut4 Cosmo workspace. Keeps asset metadata and status in sync
     sync: "false"
 
 # Vidispine API Configuration
@@ -556,6 +577,7 @@ ndr:
 
 # Octopus Configuration
 octopus:
+  # -- Enable Octopus newsroom system integration for receiving MOS messages
   enabled: false
   # -- API endpoint URL for Octopus newsroom system integration
   api: ""
@@ -571,6 +593,7 @@ octopus:
 
 # Adobe Libraries API Configuration
 adobe:
+  # -- Enable Adobe Creative Cloud Libraries integration for syncing MOGRT templates
   enabled: false
   # -- OAuth access token for Adobe Creative Cloud Libraries API authentication
   clientToken: ""
@@ -617,6 +640,7 @@ auth:
   secret:
 
 # Admin Users
+# -- List of email addresses for users with administrative privileges. One email per line. These users will have full system access including project deletion and user management.
 adminUsers: |
   admin1@domain.com
   admin2@domain.com
