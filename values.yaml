@@ -1,20 +1,26 @@
 ## Vulcano Helm Chart Values
 ## Complete application deployment with MongoDB, RabbitMQ, and optional CSI driver
 
-# Global configuration
+# -- Global configuration for the Vulcano deployment
 global:
+  # -- Kubernetes namespace for the deployment
   namespace: "vulcano-app"
+  # -- Domain name for ingress and services
   domain: "vulcano.example.com"
 
-# Docker Image Configuration
+# -- Docker Image Configuration
 images:
   vulcano:
+    # -- Docker repository for Vulcano application
     repository: "moovit/vulcano"
+    # -- Docker image tag
     tag: "1.9.12"
+    # -- Image pull policy
     pullPolicy: "IfNotPresent"
 
-# Image Pull Secrets
+# -- Image Pull Secrets configuration
 imagePullSecrets:
+  # -- Enable image pull secrets
   enabled: true
   secrets:
     - name: docker-io
@@ -25,12 +31,17 @@ vulcano:
   replicaCount: 1
 
   service:
+    # -- Service type (ClusterIP, NodePort, LoadBalancer)
     type: ClusterIP
+    # -- Service port
     port: 8889
+    # -- Target port
     targetPort: 8889
 
   ingress:
+    # -- Enable ingress
     enabled: true
+    # -- Ingress class name
     className: nginx
     annotations:
       nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
@@ -47,7 +58,11 @@ vulcano:
          proxy_set_header Connection "upgrade";
          proxy_cache_bypass $http_upgrade;
         }
+    # -- Ingress host
     host: "vulcano.example.com"
+    # -- Enable TLS
+    tls:
+      enabled: false
     path: "/"
     tls:
       enabled: false
@@ -92,81 +107,126 @@ vulcano:
     size: "10Gi"
 
   # Application configuration
+  # -- Custom subtitle text displayed in the web interface header
   subtitle: ""
+  # -- Enable download functionality for rendered assets in the web interface
   allowDownload: "true"
+  # -- Allow creation of assets with duplicate names
   allowDuplicates: "true"
+  # -- Enable line breaks in text properties by default when creating new assets
   allowLinebreaksByDefault: "false"
   autologout:
+    # -- Completely disable automatic logout functionality
     disable: "false"
+    # -- Number of hours of inactivity before users are automatically logged out
     hours: "1"
+  # -- Enable support for custom SSL certificates
+  customCertificates: "/etc/certs"
+  # -- HTTP endpoint URL that receives completed asset data and can MODIFY it before final storage
   completedAssetInterceptor: ""
+  # -- HTTP webhook URL for NOTIFICATION purposes only - receives completed asset data but cannot modify it
   completedWebhook: ""
+  # -- HTTP endpoint URL that will be called when a new asset is created
   createAssetInterceptor: ""
   folder:
+    # -- Enable creation of user-specific folders for organizing generated assets
     createUserFolder: "false"
+    # -- Global parent folder path component inserted in generated asset folder structure when user folders are enabled
     globalParent: ""
   frontend:
+    # -- If enabled, a Timecode input will appear in the PreferenceView for assets
     enableTimecodeForAssets: "false"
   home:
     base: "/home"
+  # -- Maximum number of template properties that can be used in auto-generated asset names
   maxPropertiesInNames: "5"
+  # -- Maximum character length for individual property values used in asset names
   maxPropertyLength: "10"
   media:
     dockerHighresPath: ""
   output:
+    # -- Template pattern for PatternBasedOutputNameGenerator using placeholder syntax
     namePattern: ""
   panel:
+    # -- Require authentication for the Adobe Premiere Pro panel
     loginRequired: "true"
   projects:
+    # -- Sorting criteria for project lists in searchProjects API
     sortBy: "NAME"
+  # -- Automatically load and display projects when the main page is opened
   searchProjectOnPageOpen: "true"
+  # -- Controls whether the frontend displays all bins in the project structure or only those with content
   showAllBins: "false"
+  # -- Allow users to specify custom filenames when creating assets instead of using auto-generated names
   useCustomFileName: "false"
   webconfig:
+    # -- Disable the web-based configuration interface
     disable: "false"
 
-# MongoDB Configuration
-mongodb:
-  enabled: true
-  fullnameOverride: "mongodb"
+  # -- JWT license key for application licensing
+  license:
+    key: ""
 
+# -- MongoDB Configuration
+mongodb:
+  # -- Enable MongoDB deployment
+  enabled: true
+  # -- Full name override for MongoDB resources
+  fullnameOverride: "mongodb"
+  # -- MongoDB architecture (standalone or replicaset)
   architecture: "replicaset"
+  # -- Number of MongoDB replicas
   replicaCount: 3
 
   auth:
+    # -- MongoDB root username
     rootUser: "root"
+    # -- MongoDB root password
     rootPassword: "bitte"
 
   persistence:
+    # -- Enable MongoDB persistence
     enabled: true
+    # -- MongoDB persistent volume size
     size: "20Gi"
+    # -- Storage class name for MongoDB
     storageClassName: ""
+    # -- Resource policy for persistent volumes
     resourcePolicy: "keep"
 
   metrics:
     enabled: false
 
-# RabbitMQ Configuration
+# -- RabbitMQ Configuration
 rabbitmq:
+  # -- Enable RabbitMQ deployment
   enabled: true
+  # -- Full name override for RabbitMQ resources
   fullnameOverride: "rabbitmq"
-
+  # -- Number of RabbitMQ replicas
   replicaCount: 3
 
   auth:
+    # -- Erlang cookie for RabbitMQ clustering
     erlangCookie: "VULCANO_SECRET_COOKIE"
+    # -- RabbitMQ admin username
     username: "vulcano"
+    # -- RabbitMQ admin password
     password: "vulcano0479"
 
   service:
+    # -- RabbitMQ service type (ClusterIP, NodePort, LoadBalancer)
     type: NodePort
 
   persistence:
+    # -- Enable RabbitMQ persistence
     enabled: false
 
   metrics:
+    # -- Enable RabbitMQ metrics
     enabled: false
 
+  # -- Queue name for job updates
   jobUpdateQueue: "vulcano-job-updates"
 
 # RBAC Configuration
@@ -270,28 +330,50 @@ springdoc:
 
 # Vulcano Folder Configuration
 folders:
+  # -- Path mapping configuration for render nodes in distributed rendering setups
   pathMapRenderNode: "Z:"
+  # -- Server-side path mapping configuration for shared storage access
   pathMapServer: "/data"
+  # -- Enable support for custom SSL certificates
   customCertificates: "/etc/certs"
-  templates: "templates"
+  # -- Root directory path containing all After Effects templates and project files
+  templates: "/data/templates"
   media:
-    folder: "/highres"
+    # -- Root directory path where generated high-resolution media files are stored
+    folder: "/data/highres"
+    # -- Comma-separated list of allowed media file extensions for processing
     extension: ".mov"
-    clientFolder: "/Volumes/helmut_1/vulcano/highres"
-    templatesFolder: "/highres_templates"
+    # -- Comma-separated list of allowed media file extensions for processing
+    mediaExtension: ".mov"
+    # -- Client-side path mapping for media files in path replacement operations
+    clientFolder: "/data/highres"
+    # -- Directory path containing After Effects project templates and MOGRT files
+    templatesFolder: "/data/highres_templates"
   output:
-    folder: "/data/OUTPUT"
+    # -- Folder path where deleted high-resolution rendered files are moved before permanent deletion
     deletedFolder: "/highres_deleted"
-  proxy: "/lowres"
-  thumbnails: "/thumbs"
+    # -- Folder path where deleted high-resolution rendered files are moved before permanent deletion
+    deletedhires: "/highres_deleted"
+  # -- Directory path where low-resolution proxy files are stored
+  proxy: "/data/lowres"
+  # -- Directory path where thumbnail images are stored
+  thumbnails: "/data/thumbs"
+  # -- Client-side path mapping for template files
+  templatesClient: ""
 
 # Vulcano Scanner Configuration
 folderScanner:
+  # -- Enable Delta Tre sports data integration
   startD3: "false"
+  # -- Enable automatic file system monitoring to detect changes in template folders
   startWatcher: "true"
+  # -- Maximum folder depth level for recursive scanning operations
   maxDepth: "10"
+  # -- Allow creation and preservation of empty folders in the file system structure
   allowEmptyFolder: "true"
+  # -- Automatically re-render missing high-resolution files when detected during system checks
   recreateMissingHighres: "true"
+  # -- Default folder name used for organizing templates and assets when no specific bin is specified
   defaultBin: "Templates"
 
 # Additional Scanner Configuration
@@ -301,30 +383,125 @@ folderscanner:
     templates:
       client: "/Volumes/helmut_1/vulcano/highres_templates"
 
+# Vulcano Integration Configuration
+integrations:
+  # -- Authentication token for Helmut4 media asset management system integration
+  helmut:
+    # -- Authentication token for Helmut4 media asset management system integration
+    apiToken: ""
+    # -- Base URL of the Helmut4 server API (e.g., https://helmut.company.com/api)
+    baseUrl: ""
+    # -- OAuth client identifier for Helmut4 API authentication
+    clientId: ""
+    # -- OAuth client secret for secure Helmut4 API authentication
+    clientSecret: ""
+    # -- Base breadcrumb path for Helmut4 Cosmo workspace navigation
+    cosmoBaseBreadcrumb: ""
+    # -- Destination path mapping for Helmut4 Cosmo integration
+    cosmoMappingDest: ""
+    # -- Source path mapping for Helmut4 Cosmo integration
+    cosmoMappingSrc: ""
+    # -- Enable synchronization between Vulcano assets and Helmut4 Cosmo workspace
+    cosmoSync: "false"
+    # -- Enable detailed logging of HTTP requests made to Helmut4 API
+    logRequest: "false"
+    # -- Number of items per page when fetching data from Helmut4 API
+    pageSize: "50"
+  # -- URL endpoint for looking up BID information in the NDR VDB system
+  ndr:
+    # -- URL endpoint for looking up BID (Broadcast ID) information in the NDR VDB system
+    bidLookupUrl: ""
+    # -- Password for authenticating with the NDR VDB system
+    vdbPassword: ""
+    # -- Server hostname or URL for the NDR VDB system
+    vdbServer: ""
+    # -- Enable simulation mode for VDB operations without making actual network calls
+    vdbSimulate: "false"
+    # -- Username for authenticating with the NDR VDB system
+    vdbUsername: ""
+    # -- URL to the NDR VDB documentation wiki
+    wikiUrl: ""
+    # -- Wildcard BID pattern used for broadcast ID matching in the NDR VDB system
+    wildcardBid: ""
+  # -- API endpoint URL for Octopus newsroom system integration
+  octopus:
+    # -- API endpoint URL for Octopus newsroom system integration
+    api: ""
+    # -- Delay in milliseconds between Octopus client polling requests
+    clientDelayInMs: "5000"
+    # -- Password for authenticating with the Octopus newsroom system
+    password: ""
+    # -- Enable the Octopus client for receiving and processing MOS messages
+    startClient: "false"
+    # -- Username for authenticating with the Octopus newsroom system
+    username: ""
+  # -- Base URL for Vidispine media asset management system API
+  vidispine:
+    # -- Base URL for Vidispine media asset management system API
+    baseUrl: ""
+    # -- Authentication endpoint URL for Vidispine system
+    baseUrlAuth: ""
+    # -- OAuth client identifier for Vidispine API authentication
+    clientId: ""
+    # -- OAuth client secret for secure Vidispine API authentication
+    clientSecret: ""
+    # -- Default location value to be pre-selected in the location selector
+    defaultLocation: ""
+    # -- URL for retrieving allowed values for the Location metadata field from Vidispine
+    locationValuesUrl: ""
+    # -- Vidispine storage identifier for file operations
+    storage: ""
+    # -- Default workflow identifier in Vidispine for processing uploaded assets
+    workflow: ""
+    # -- Specific workflow identifier for MOGRT files in Vidispine
+    workflowMogrt: ""
+    # -- Version number of the default Vidispine workflow to use
+    workflowVersion: ""
+    # -- Version number of the MOGRT-specific workflow in Vidispine
+    workflowVersionMogrt: ""
+
 # Vulcano Feature Configuration
 features:
+  # -- Ignore MOGRT files during template scanning and processing
   ignoreMogrt: "false"
+  # -- Maximum character limit for asset names and file names
   maxNameLength: "200"
+  # -- Enable detailed logging of all HTTP requests made to external APIs
   logThirdPartyRequests: "false"
+  # -- Enable After Effects rendering functionality
   afxRender: "true"
+  # -- Enable creation of MOGRT files during rendering
   afxCreateMogrt: "true"
+  # -- Enable preview rendering functionality in AfxRenderer
   afxRenderPreview: "true"
+  # -- Maximum number of assets that can be rendered simultaneously in mass rendering operations
   afxRenderMassJobLimit: "-1"
+  # -- Enable on-demand rendering capabilities
   afxRenderOnDemand: "false"
+  # -- If enabled, users can both add an asset to a project and mark it as 'Preparing'
+  afxRenderOnDemandExtended: "false"
+  # -- Enable cloud-based rendering mode
   cloudmode: "false"
 
 # Housekeeping Configuration
 housekeeping:
+  # -- Enable automatic cleanup and maintenance tasks
   enabled: "false"
+  # -- Maximum age in days for housekeeping items before they are automatically cleaned up
   maxAge: "14"
 
 # Helmut Configuration
 helmut:
   enabled: false
+  # -- Base URL of the Helmut4 server API (e.g., https://helmut.company.com/api)
   baseUrl:
+  # -- Enable detailed logging of HTTP requests made to Helmut4 API
   logRequest: "false"
+  # -- Authentication token for Helmut4 media asset management system integration
   apiToken: ""
+  # -- OAuth client identifier for Helmut4 API authentication
   clientId: ""
+  # -- OAuth client secret for secure Helmut4 API authentication
   clientSecret: ""
   pageSize: "50"
   cosmo:
@@ -336,65 +513,107 @@ helmut:
 # Vidispine API Configuration
 vidispine:
   enabled: false
+  # -- Base URL for Vidispine media asset management system API
   baseUrl: ""
+  # -- Authentication endpoint URL for Vidispine system
   baseUrlAuth: ""
+  # -- Default workflow identifier in Vidispine for processing uploaded assets
   workflow: ""
+  # -- Version number of the default Vidispine workflow to use
   workflowVersion: ""
+  # -- Specific workflow identifier for MOGRT files in Vidispine
   workflowMogrt: ""
+  # -- Specific workflow identifier for MOGRT files in Vidispine
+  workflowMogrt: ""
+  # -- Version number of the MOGRT-specific workflow in Vidispine
   workflowVersionMogrt: ""
+  # -- OAuth client identifier for Vidispine API authentication
   clientId: ""
+  # -- OAuth client secret for secure Vidispine API authentication
   clientSecret: ""
+  # -- Vidispine storage identifier for file operations
   storage: ""
+  # -- URL for retrieving allowed values for the Location metadata field from Vidispine
+  locationValuesUrl: ""
+  # -- Default location value to be pre-selected in the location selector
+  defaultLocation: ""
 
 # VDB Configuration
 vdb:
+  # -- Server hostname or URL for the NDR VDB system
   server: ""
+  # -- Enable simulation mode for VDB operations without making actual network calls
   simulate: "true"
 
 # NDR Configuration
 ndr:
+  # -- Wildcard BID pattern used for broadcast ID matching in the NDR VDB system
   wildcardBid: "xxxxx"
+  # -- URL to the NDR VDB documentation wiki
   wikiUrl:
+  # -- URL endpoint for looking up BID (Broadcast ID) information in the NDR VDB system
   bidLookupUrl:
 
 # Octopus Configuration
 octopus:
   enabled: false
+  # -- API endpoint URL for Octopus newsroom system integration
   api: ""
+  # -- Password for authenticating with the Octopus newsroom system
   password: ""
+  # -- Enable the Octopus client for receiving and processing MOS messages
   startClient: "false"
+  # -- Username for authenticating with the Octopus newsroom system
   username: ""
   client:
+    # -- Delay in milliseconds between Octopus client polling requests
     delayInMS: "1000"
 
 # Adobe Libraries API Configuration
 adobe:
   enabled: false
+  # -- OAuth access token for Adobe Creative Cloud Libraries API authentication
   clientToken: ""
+  # -- Adobe IMS Client ID for OAuth authentication flow
   clientId: ""
+  # -- Adobe IMS Client Secret for OAuth authentication
   secret: ""
+  # -- Enable automatic synchronization of Adobe Creative Cloud Libraries every 2 minutes
   scan: "false"
+  # -- File path where a JSON dump of all available Adobe CC Libraries elements will be created
   dumpFilepath: ""
+  # -- Adobe API Key for accessing Adobe Creative Cloud services
   apiKey: "CCHomeWeb1"
+  # -- Comma-separated list of Adobe Creative Cloud Library names that should be excluded from synchronization
   librariesIgnore: '"Library to Ignore"'
 
 # Project Configuration
 project:
+  # -- URLs to send project data to external systems
   sendToUrls: ""
   delete:
+    # -- Only allow project deletion by the owner
     ownerOnly: "true"
 
 # Authentication Configuration
 auth:
+  # -- Authentication mode (MICROSOFT, KEYCLOAK, etc.)
   mode: "MICROSOFT"
   microsoft:
+    # -- Microsoft Azure AD authority URL
     authority:
+    # -- Microsoft Azure AD client ID
     clientId:
+  # -- Service admin password for authentication
   serviceAdminPassword:
   keycloak:
+    # -- Keycloak authority URL
     authority:
+    # -- Keycloak client ID
     clientId:
+    # -- Keycloak client secret
     clientSecret:
+  # -- Authentication secret key
   secret:
 
 # Admin Users
@@ -405,19 +624,29 @@ adminUsers: |
 # Tomcat Configuration
 tomcat:
   multipart:
+    # -- Maximum file size for multipart uploads
     maxFileSize: "1000MB"
+    # -- Maximum request size for multipart uploads
     maxRequestSize: "1000MB"
 
 # Network Configuration
+# -- Node selector for pod scheduling
 nodeSelector: {}
-
+# -- Tolerations for pod scheduling on tainted nodes
 tolerations: []
-
+# -- Affinity rules for pod scheduling
 affinity: {}
+
+# Data Feed Mapping Configuration
+dataFeedMapping:
+  # -- Skip Asset Creation for Updates from Datafeed
+  skipUpdates: "false"
+  # -- Ignore Delete Messages from Datafeed
+  ignoreDelete: "false"
 
 # ConfigMap and Secret Configuration
 config:
-  # Labels for all resources
+  # -- Labels for all resources
   labels:
     app: "vulcano"
     version: "1.9.12"

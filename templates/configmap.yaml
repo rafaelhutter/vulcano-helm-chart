@@ -140,6 +140,8 @@ data:
   vulcano.vidispine.clientId: {{ .Values.vidispine.clientId | default "" | quote }}
   vulcano.vidispine.clientSecret: {{ .Values.vidispine.clientSecret | default "" | quote }}
   vulcano.vidispine.storage: {{ .Values.vidispine.storage | default "" | quote }}
+  vulcano.vidispine.locationValuesUrl: {{ .Values.vidispine.locationValuesUrl | default "" | quote }}
+  vulcano.vidispine.defaultLocation: {{ .Values.vidispine.defaultLocation | default "" | quote }}
 
   # VDB Configuration
   ndr.vdb.server: {{ .Values.vdb.server | quote }}
@@ -193,6 +195,13 @@ data:
   
   # RabbitMQ Queue Configuration
   vulcano.jobUpdateQueue: {{ .Values.rabbitmq.jobUpdateQueue | default "vulcano-job-updates" | quote }}
+
+  # License Configuration
+  vulcano.license.key: {{ .Values.vulcano.license.key | default "" | quote }}
+
+  # Data Feed Mapping Configuration
+  DATA_FEED_MAPPING_SKIP_UPDATES: {{ .Values.dataFeedMapping.skipUpdates | default "false" | quote }}
+  DATA_FEED_MAPPING_IGNORE_DELETE: {{ .Values.dataFeedMapping.ignoreDelete | default "false" | quote }}
 
 ---
 apiVersion: v1
