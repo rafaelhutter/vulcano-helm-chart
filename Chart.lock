@@ -1,0 +1,9 @@
+dependencies:
+- name: mongodb
+  repository: oci://registry-1.docker.io/cloudpirates
+  version: 0.10.3
+- name: rabbitmq
+  repository: oci://registry-1.docker.io/cloudpirates
+  version: 0.2.12
+digest: sha256:990f31f56a297c36d2d4d46375c975f590ca7c44c3533608b532819c5bbc43f7
+generated: "2026-02-10T23:20:02.634595+01:00"

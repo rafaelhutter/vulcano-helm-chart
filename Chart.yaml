@@ -1,0 +1,24 @@
+apiVersion: v2
+name: vulcano
+description: Vulcano - Complete application deployment with MongoDB, RabbitMQ, and optional CSI driver
+type: application
+version: 1.0.0
+appVersion: "1.5.140"
+home: https://github.com/moovit/vulcano
+sources:
+  - https://github.com/moovit/vulcano
+maintainers:
+  - name: Moovit
+    email: support@moovit.de
+
+dependencies:
+  - name: mongodb
+    alias: mongodb
+    repository: oci://registry-1.docker.io/cloudpirates
+    version: 0.10.3
+    condition: mongodb.enabled
+  - name: rabbitmq
+    alias: rabbitmq
+    repository: oci://registry-1.docker.io/cloudpirates
+    version: 0.2.12
+    condition: rabbitmq.enabled

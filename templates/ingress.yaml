@@ -1,0 +1,44 @@
+{{- if and .Values.vulcano.enabled .Values.vulcano.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: vulcano
+  namespace: {{ include "vulcano.namespace" . }}
+  labels:
+    {{- include "vulcano.labels" . | nindent 4 }}
+    app: vulcano
+  annotations:
+    {{- if .Values.vulcano.ingress.annotations }}
+    {{- toYaml .Values.vulcano.ingress.annotations | nindent 4 }}
+    {{- end }}
+    {{- if and .Values.vulcano.ingress.tls.enabled (eq .Values.vulcano.ingress.tls.source "letsencrypt") .Values.vulcano.ingress.tls.letsencrypt.enabled }}
+    cert-manager.io/cluster-issuer: {{ .Values.vulcano.ingress.tls.letsencrypt.clusterIssuer | quote }}
+    {{- end }}
+spec:
+  {{- if .Values.vulcano.ingress.className }}
+  ingressClassName: {{ .Values.vulcano.ingress.className }}
+  {{- end }}
+  
+  {{- if .Values.vulcano.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.vulcano.ingress.host }}
+      {{- if eq .Values.vulcano.ingress.tls.source "letsencrypt" }}
+      secretName: {{ .Values.vulcano.ingress.host | replace "." "-" }}-tls
+      {{- else if eq .Values.vulcano.ingress.tls.source "existing" }}
+      secretName: {{ .Values.vulcano.ingress.tls.existing.secretName }}
+      {{- end }}
+  {{- end }}
+
+  rules:
+    - host: {{ .Values.vulcano.ingress.host }}
+      http:
+        paths:
+          - path: {{ .Values.vulcano.ingress.path }}
+            pathType: Prefix
+            backend:
+              service:
+                name: vulcano
+                port:
+                  number: {{ .Values.vulcano.service.port }}
+{{- end }}

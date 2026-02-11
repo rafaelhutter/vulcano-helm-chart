@@ -1,0 +1,21 @@
+{{- if .Values.vulcano.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vulcano
+  namespace: {{ include "vulcano.namespace" . }}
+  labels:
+    {{- include "vulcano.labels" . | nindent 4 }}
+    app: vulcano
+spec:
+  type: {{ .Values.vulcano.service.type }}
+  ports:
+    - port: {{ .Values.vulcano.service.port }}
+      targetPort: {{ .Values.vulcano.service.targetPort }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "vulcano.selectorLabels" . | nindent 4 }}
+    app: vulcano
+{{- end }}

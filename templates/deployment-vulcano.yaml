@@ -1,0 +1,252 @@
+{{- if .Values.vulcano.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vulcano
+  namespace: {{ include "vulcano.namespace" . }}
+  labels:
+    {{- include "vulcano.labels" . | nindent 4 }}
+    app: vulcano
+spec:
+  replicas: {{ .Values.vulcano.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "vulcano.selectorLabels" . | nindent 6 }}
+      app: vulcano
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}
+      labels:
+        {{- include "vulcano.selectorLabels" . | nindent 8 }}
+        app: vulcano
+    spec:
+      serviceAccountName: {{ include "vulcano.serviceAccountName" . }}
+      {{- if .Values.securityContext }}
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+      {{- end }}
+      
+      {{- if .Values.imagePullSecrets.enabled }}
+      imagePullSecrets:
+        - name: docker-io
+      {{- end }}
+
+      containers:
+        - name: vulcano
+          image: "{{ .Values.images.vulcano.repository }}:{{ .Values.images.vulcano.tag }}"
+          imagePullPolicy: {{ .Values.images.vulcano.pullPolicy }}
+          
+          ports:
+            - name: http
+              containerPort: 8889
+              protocol: TCP
+
+          {{- if .Values.vulcano.livenessProbe.enabled }}
+          livenessProbe:
+            initialDelaySeconds: {{ .Values.vulcano.livenessProbe.initialDelaySeconds }}
+            failureThreshold: {{ .Values.vulcano.livenessProbe.failureThreshold }}
+            periodSeconds: {{ .Values.vulcano.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.vulcano.livenessProbe.timeoutSeconds }}
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+          {{- end }}
+
+          {{- if .Values.vulcano.readinessProbe.enabled }}
+          readinessProbe:
+            initialDelaySeconds: {{ .Values.vulcano.readinessProbe.initialDelaySeconds }}
+            failureThreshold: {{ .Values.vulcano.readinessProbe.failureThreshold }}
+            periodSeconds: {{ .Values.vulcano.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.vulcano.readinessProbe.timeoutSeconds }}
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+          {{- end }}
+
+          resources:
+            {{- toYaml .Values.vulcano.resources | nindent 12 }}
+
+          env:
+            # Logging Configuration
+            - name: JAVA_TOOL_OPTIONS
+              value: "-Dlogging.file.path=/data/logs -Dlogging.file.name=/data/logs/vulcano_k8s.log"
+
+            # MongoDB Configuration
+            - name: spring.data.mongodb.host
+              value: {{ include "vulcano.mongodb.host" . | quote }}
+            - name: spring.data.mongodb.port
+              value: "27017"
+            - name: spring.data.mongodb.database
+              value: "vulcano"
+            - name: spring.data.mongodb.authentication-database
+              value: "admin"
+            {{- if .Values.mongodb.replicaSet.enabled }}
+            - name: spring.data.mongodb.replica-set
+              value: {{ .Values.mongodb.replicaSet.name | quote }}
+            {{- end }}
+            {{- if .Values.mongodb.enabled }}
+            - name: spring.data.mongodb.username
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-credentials
+                  key: username
+            - name: spring.data.mongodb.password
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-credentials
+                  key: password
+            {{- end }}
+
+            # RabbitMQ Configuration
+            - name: spring.rabbitmq.host
+              value: {{ include "vulcano.rabbitmq.host" . | quote }}
+            - name: spring.rabbitmq.port
+              value: "5672"
+            {{- if .Values.rabbitmq.enabled }}
+            - name: spring.rabbitmq.username
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-credentials
+                  key: username
+            - name: spring.rabbitmq.password
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-credentials
+                  key: password
+            {{- end }}
+
+            # Folder Configuration
+            - name: vulcano.pathmap.rendernode
+              valueFrom:
+                configMapKeyRef:
+                  name: vulcano-config
+                  key: vulcano.pathmap.rendernode
+            - name: vulcano.pathmap.server
+              valueFrom:
+                configMapKeyRef:
+                  name: vulcano-config
+                  key: vulcano.pathmap.server
+            - name: vulcano.customCertficates
+              valueFrom:
+                configMapKeyRef:
+                  name: vulcano-config
+                  key: vulcano.customCertficates
+            - name: vulcano.folderscanner.templates
+              valueFrom:
+                configMapKeyRef:
+                  name: vulcano-config
+                  key: vulcano.folderscanner.templates
+            - name: vulcano.folderscanner.mediaFolder
+              valueFrom:
+                configMapKeyRef:
+                  name: vulcano-config
+                  key: vulcano.folderscanner.mediaFolder
+            - name: vulcano.folderscanner.proxyFolder
+              valueFrom:
+                configMapKeyRef:
+                  name: vulcano-config
+                  key: vulcano.folderscanner.proxyFolder
+            - name: vulcano.folderscanner.thumbFolder
+              valueFrom:
+                configMapKeyRef:
+                  name: vulcano-config
+                  key: vulcano.folderscanner.thumbFolder
+
+            # Scanner Configuration
+            - name: vulcano.folderscanner.startWatcher
+              valueFrom:
+                configMapKeyRef:
+                  name: vulcano-config
+                  key: vulcano.folderscanner.startWatcher
+            - name: vulcano.folderscanner.defaultBin
+              valueFrom:
+                configMapKeyRef:
+                  name: vulcano-config
+                  key: vulcano.folderscanner.defaultBin
+
+            # Feature Configuration
+            - name: vulcano.afx.render
+              valueFrom:
+                configMapKeyRef:
+                  name: vulcano-config
+                  key: vulcano.afx.render
+
+            # Housekeeping Configuration
+            - name: vulcano.housekeeping.enabled
+              valueFrom:
+                configMapKeyRef:
+                  name: vulcano-config
+                  key: vulcano.housekeeping.enabled
+
+            # Authentication
+            - name: login.mode
+              valueFrom:
+                configMapKeyRef:
+                  name: vulcano-config
+                  key: login.mode
+            {{- if eq .Values.auth.mode "MICROSOFT" }}
+            - name: microsoft.auth.authority
+              valueFrom:
+                configMapKeyRef:
+                  name: vulcano-config
+                  key: microsoft.auth.authority
+            - name: microsoft.auth.clientId
+              valueFrom:
+                configMapKeyRef:
+                  name: vulcano-config
+                  key: microsoft.auth.clientId
+            {{- end }}
+
+            # Tomcat Configuration
+            - name: spring.servlet.multipart.max-file-size
+              valueFrom:
+                configMapKeyRef:
+                  name: vulcano-config
+                  key: spring.servlet.multipart.max-file-size
+            - name: spring.servlet.multipart.max-request-size
+              valueFrom:
+                configMapKeyRef:
+                  name: vulcano-config
+                  key: spring.servlet.multipart.max-request-size
+
+          envFrom:
+            # Load all configuration from ConfigMap as env vars
+            - configMapRef:
+                name: vulcano-config
+
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.vulcano.storage.mountPath }}
+            - name: admin-users
+              mountPath: /app/admin-users.txt
+              subPath: admin-users.txt
+
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ .Values.vulcano.storage.pvc }}
+        - name: admin-users
+          configMap:
+            name: admin-users
+            items:
+              - key: admin-users.txt
+                path: admin-users.txt
+
+      {{- if .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
+      {{- end }}
+
+      {{- if .Values.affinity }}
+      affinity:
+        {{- toYaml .Values.affinity | nindent 8 }}
+      {{- end }}
+
+      {{- if .Values.tolerations }}
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}
+      {{- end }}
+
+{{- end }}

@@ -1,0 +1,111 @@
+apiVersion: v1
+entries:
+  mongodb:
+  - annotations:
+      artifacthub.io/category: database
+      artifacthub.io/changes: |2
+            - kind: changed
+              description: "Chart updated"
+      artifacthub.io/containsSecurityUpdates: "false"
+      artifacthub.io/links: |
+        - name: MongoDB
+          url: https://www.mongodb.com
+        - name: Helm Chart
+          url: https://github.com/CloudPirates-io/helm-charts/tree/main/charts/mongodb
+        - name: Application
+          url: https://github.com/mongodb/mongo
+        - name: Maintainer CloudPirates
+          url: https://www.cloudpirates.io
+      artifacthub.io/signKey: |
+        fingerprint: 6917f1a88c122cbb1de5aa55457752135bdcf95a
+        url: https://raw.githubusercontent.com/CloudPirates-io/helm-charts/refs/heads/main/cosign.pub
+      license: Apache-2.0
+    apiVersion: v2
+    appVersion: 8.2.4
+    created: "2026-02-11T08:42:38.556631+01:00"
+    dependencies:
+    - name: common
+      repository: oci://registry-1.docker.io/cloudpirates
+      version: 2.x.x
+    description: MongoDB a flexible NoSQL database for scalable, real-time data management
+    digest: 704944da46567ccaa715b0d65f4ed0f7455346d54256cca03b7489302467112a
+    home: https://www.mongodb.com
+    icon: https://a.storyblok.com/f/143071/512x512/5d228988dc/mongodb-logo.svg
+    keywords:
+    - mongodb
+    - database
+    - nosql
+    maintainers:
+    - email: hello@cloudpirates.io
+      name: CloudPirates GmbH & Co. KG
+      url: https://www.cloudpirates.io
+    name: mongodb
+    sources:
+    - https://github.com/CloudPirates-io/helm-charts/tree/main/charts/mongodb
+    - https://github.com/mongodb/mongo
+    type: application
+    urls:
+    - https://git.mvint.de/vulcano/vulcano-helm-chart/-/raw/main/charts/mongodb-0.10.3.tgz
+    version: 0.10.3
+  rabbitmq:
+  - annotations:
+      category: Message Broker
+      license: Apache-2.0
+    apiVersion: v2
+    appVersion: 4.1.4
+    created: "2026-02-11T08:42:38.5575+01:00"
+    dependencies:
+    - name: common
+      repository: oci://registry-1.docker.io/cloudpirates
+      version: 1.x.x
+    description: A messaging broker that implements the Advanced Message Queuing Protocol
+      (AMQP)
+    digest: 12ea5cea2d00cf048a0d459024ceb6307f8bb63b5898f1072f27d81521df3eee
+    home: https://www.cloudpirates.io
+    icon: https://a.storyblok.com/f/143071/512x512/aa1bd68288/rabbitmq-logo.svg
+    keywords:
+    - rabbitmq
+    - message broker
+    - amqp
+    - messaging
+    - queue
+    maintainers:
+    - name: CloudPirates GmbH & Co. KG
+      url: https://www.cloudpirates.io
+    name: rabbitmq
+    sources:
+    - https://github.com/CloudPirates-io/helm-charts/tree/main/charts/rabbitmq
+    type: application
+    urls:
+    - https://git.mvint.de/vulcano/vulcano-helm-chart/-/raw/main/charts/rabbitmq-0.2.12.tgz
+    version: 0.2.12
+  vulcano:
+  - apiVersion: v2
+    appVersion: 1.5.140
+    created: "2026-02-11T08:42:38.555359+01:00"
+    dependencies:
+    - alias: mongodb
+      condition: mongodb.enabled
+      name: mongodb
+      repository: oci://registry-1.docker.io/cloudpirates
+      version: 0.10.3
+    - alias: rabbitmq
+      condition: rabbitmq.enabled
+      name: rabbitmq
+      repository: oci://registry-1.docker.io/cloudpirates
+      version: 0.2.12
+    description: Vulcano - Complete application deployment with MongoDB, RabbitMQ,
+      and optional CSI driver
+    digest: 6b993aa34c1d4fdbdff34ecca1b79f01a5ced4c2084dabdc41c05501dbf7fa6f
+    home: https://github.com/moovit/vulcano
+    maintainers:
+    - email: support@moovit.de
+      name: Moovit
+    name: vulcano
+    sources:
+    - https://github.com/moovit/vulcano
+    type: application
+    urls:
+    - https://git.mvint.de/vulcano/vulcano-helm-chart/-/raw/main/vulcano-1.0.0.tgz
+    version: 1.0.0
+generated: "2026-02-11T08:42:38.552192+01:00"

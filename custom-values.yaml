@@ -1,0 +1,297 @@
+# Custom Values for Vulcano Installation
+# Cluster: vulcano-k8s.moovit24.de
+
+# Global configuration
+global:
+  namespace: "vulcano-app"
+  domain: "vulcano-k8s.moovit24.de"
+
+# Docker Image Configuration
+images:
+  vulcano:
+    repository: "moovit/vulcano"
+    tag: "1.9.12"
+    pullPolicy: "Always"
+
+# Image Pull Secrets
+imagePullSecrets:
+  enabled: true
+  dockerUsername: "moovit"
+  dockerPassword: "DOCKER_PAT_HIER_EINTRAGEN"
+  dockerEmail: "support@moovit.de"
+  dockerServer: "https://index.docker.io/v1/"
+
+# Vulcano Backend Service Configuration
+vulcano:
+  enabled: "true"
+  replicaCount: 1
+
+  service:
+    type: ClusterIP
+    port: 8889
+    targetPort: 8889
+
+  ingress:
+    enabled: "true"
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+      nginx.ingress.kubernetes.io/proxy-body-size: "500m"
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/server-snippets: |
+        location /ws {
+         proxy_set_header Upgrade $http_upgrade;
+         proxy_http_version 1.1;
+         proxy_set_header X-Forwarded-Host $http_host;
+         proxy_set_header X-Forwarded-Proto $scheme;
+         proxy_set_header X-Forwarded-For $remote_addr;
+         proxy_set_header Host $host;
+         proxy_set_header Connection "upgrade";
+         proxy_cache_bypass $http_upgrade;
+        }
+    host: "vulcano-k8s.moovit24.de"
+    path: "/"
+    tls:
+      enabled: "true"
+      source: "letsencrypt"
+      letsencrypt:
+        enabled: "true"
+        clusterIssuer: "letsencrypt-prod"
+        email: "admin@moovit24.de"
+
+  resources:
+    limits:
+      cpu: "2000m"
+      memory: "4Gi"
+    requests:
+      cpu: "500m"
+      memory: "2Gi"
+
+  # Health checks
+  livenessProbe:
+    enabled: false
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+  readinessProbe:
+    enabled: false
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+  # Storage configuration
+  storage:
+    mountPath: "/data"
+    pvc: "smb-vulcano-data"
+    size: "50Gi"
+    accessModes: "ReadWriteMany"
+
+# MongoDB Configuration
+mongodb:
+  enabled: true
+  fullnameOverride: "mongodb"
+
+  replicaSet:
+    enabled: true
+    name: "vulcano-rs"
+    secondaries: 2
+    key: "Yml0dGUtY2hhbmdlLXRoaXMtaW4tcHJvZHVjdGlvbi0xMjM0NTY3ODk=" # Base64 encoded key
+
+  auth:
+    rootUser: "admin"
+    rootPassword: "bitte" # CHANGE THIS IN PRODUCTION!
+
+  persistence:
+    enabled: true
+    size: "1Gi"
+    storageClassName: ""
+    resourcePolicy: "keep"
+
+  metrics:
+    enabled: false
+
+# RabbitMQ Configuration
+rabbitmq:
+  enabled: true
+  fullnameOverride: "rabbitmq"
+
+  replicaCount: 3
+
+  peerDiscoveryK8sPlugin:
+    enabled: true
+    useLongname: true
+    addressType: hostname
+
+  auth:
+    erlangCookie: "VULCANO_SECRET_COOKIE" # CHANGE THIS IN PRODUCTION!
+    username: "vulcano"
+    password: "vulcano0479" # CHANGE THIS IN PRODUCTION!
+
+  service:
+    type: NodePort # Default: NodePort for guaranteed external access
+
+  persistence:
+    enabled: false
+
+  metrics:
+    enabled: false
+
+  # Queue Configuration
+  jobUpdateQueue: "vulcano-job-updates-demo"
+
+# RBAC Configuration
+rbac:
+  create: true
+
+# Service Account
+serviceAccount:
+  create: true
+  name: vulcano
+  annotations: {}
+
+# Security Context
+securityContext:
+  runAsNonRoot: false
+  runAsUser: 0
+  fsGroup: 0
+
+# Pod Security Policy
+podSecurityPolicy:
+  enabled: false
+
+# SMB CSI Driver Configuration (Optional)
+smbCsi:
+  enabled: true
+  username: "k8s-test"
+  password: "2nMREUca2sVv2Bz"
+  uri: "//10.0.0.201/RAID/vulcano/test"
+
+# Logging Configuration
+logging:
+  filePath: "/data/logs"
+  fileName: "/data/logs/vulcano_k8s.log"
+  fileMaxSize: "10MB"
+  level:
+    org: "INFO"
+
+# Vulcano Folder Configuration
+folders:
+  pathMapRenderNode: "Z:"
+  pathMapServer: "/data"
+  customCertificates: "/etc/certs"
+  templates: "/data/templates"
+  media:
+    folder: "/data/highres"
+    extension: ".mov"
+    clientFolder: "/data/highres"
+    templatesFolder: "/highres_templates"
+  output:
+    folder: "/data/OUTPUT"
+    deletedFolder: "/data/highres_deleted"
+  proxy: "/data/lowres"
+  thumbnails: "/data/thumbs"
+
+# Vulcano Scanner Configuration
+folderScanner:
+  startD3: "false"
+  startWatcher: "true"
+  maxDepth: "10"
+  allowEmptyFolder: "true"
+  recreateMissingHighres: "true"
+  defaultBin: "Templates"
+
+# Vulcano Feature Configuration
+features:
+  ignoreMogrt: "false"
+  maxNameLength: "200"
+  logThirdPartyRequests: "true"
+  afxRender: "true"
+  afxCreateMogrt: "true"
+  afxRenderPreview: "true"
+  afxRenderMassJobLimit: "-1"
+  afxRenderOnDemand: "false"
+  cloudmode: true
+  webConfigDisable: false
+
+# Housekeeping Configuration
+housekeeping:
+  enabled: "true"
+  maxAge: "14"
+
+# Helmut Configuration
+helmut:
+  enabled: "true"
+  baseUrl: "https://helmut.moovit24.de/v1"
+  logRequest: "false"
+  apiToken: ""
+  clientId: "4d4e762d-5161-423d-9b5b-494a56862cad"
+  clientSecret: "da3ccc8e-50b0-413e-bbac-c2c6441a0bc7-b609fe80-7cd6-4301-9495-37fe0490cb0c"
+  pageSize: "50"
+  cosmo:
+    baseBreadcrumb: ""
+    mappingDest: ""
+    mappingSrc: ""
+    sync: "false"
+
+# Adobe Libraries API Configuration
+adobe:
+  enabled: false
+  clientToken: ""
+  clientId: "c44c1737c2da48f49ef6773ffffaa3e9"
+  secret: "p8e-uoOWchAzaPhkhzU1fKkG-JjiIItbb-2H"
+  scan: "false"
+  dumpFilepath: ""
+
+# Vidispine API Configuration
+vidispine:
+  enabled: false
+  baseUrl: ""
+  baseUrlAuth: ""
+  workflow: ""
+  workflowVersion: ""
+  workflowMogrt: ""
+  workflowVersionMogrt: ""
+  clientId: ""
+  clientSecret: ""
+  storage: ""
+
+# VDB Configuration
+vdb:
+  server: ""
+  simulate: "false"
+
+# Authentication Configuration
+auth:
+  mode: "MICROSOFT"
+  microsoft:
+    authority: "https://login.microsoftonline.com/c731b2e8-8386-4d40-9845-292bd5d1de44"
+    clientId: "575080da-742b-4507-847d-c4b05ff6b852"
+
+# Admin Users
+adminUsers: |
+  admin1@domain.com
+  admin2@domain.com
+
+# Tomcat Configuration
+tomcat:
+  multipart:
+    maxFileSize: "1000MB"
+    maxRequestSize: "1000MB"
+
+# Network Configuration
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# ConfigMap and Secret Configuration
+config:
+  labels:
+    app: "vulcano"
+    version: "1.9.11"

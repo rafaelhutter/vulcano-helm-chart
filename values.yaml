@@ -1,0 +1,423 @@
+## Vulcano Helm Chart Values
+## Complete application deployment with MongoDB, RabbitMQ, and optional CSI driver
+
+# Global configuration
+global:
+  namespace: "vulcano-app"
+  domain: "vulcano.example.com"
+
+# Docker Image Configuration
+images:
+  vulcano:
+    repository: "moovit/vulcano"
+    tag: "1.9.12"
+    pullPolicy: "IfNotPresent"
+
+# Image Pull Secrets
+imagePullSecrets:
+  enabled: true
+  secrets:
+    - name: docker-io
+
+# Vulcano Backend Service Configuration
+vulcano:
+  enabled: true
+  replicaCount: 1
+
+  service:
+    type: ClusterIP
+    port: 8889
+    targetPort: 8889
+
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+      nginx.ingress.kubernetes.io/proxy-body-size: "500m"
+      nginx.ingress.kubernetes.io/server-snippets: |
+        location /ws {
+         proxy_set_header Upgrade $http_upgrade;
+         proxy_http_version 1.1;
+         proxy_set_header X-Forwarded-Host $http_host;
+         proxy_set_header X-Forwarded-Proto $scheme;
+         proxy_set_header X-Forwarded-For $remote_addr;
+         proxy_set_header Host $host;
+         proxy_set_header Connection "upgrade";
+         proxy_cache_bypass $http_upgrade;
+        }
+    host: "vulcano.example.com"
+    path: "/"
+    tls:
+      enabled: false
+      # Certificate source: "letsencrypt" or "existing"
+      source: "letsencrypt" # Options: letsencrypt, existing
+      # For Let's Encrypt (when source=letsencrypt)
+      letsencrypt:
+        enabled: false
+        clusterIssuer: "letsencrypt-prod" # or letsencrypt-staging
+        email: "admin@example.com"
+      # For existing certificate (when source=existing)
+      existing:
+        secretName: "tls-vulcano-cert"
+
+  resources:
+    limits:
+      cpu: "2000m"
+      memory: "4Gi"
+    requests:
+      cpu: "500m"
+      memory: "2Gi"
+
+  # Health checks
+  livenessProbe:
+    enabled: false
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+  readinessProbe:
+    enabled: false
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+  # Storage configuration
+  storage:
+    mountPath: "/data"
+    pvc: "smb-vulcano-data"
+    size: "10Gi"
+
+  # Application configuration
+  subtitle: ""
+  allowDownload: "true"
+  allowDuplicates: "true"
+  allowLinebreaksByDefault: "false"
+  autologout:
+    disable: "false"
+    hours: "1"
+  completedAssetInterceptor: ""
+  completedWebhook: ""
+  createAssetInterceptor: ""
+  folder:
+    createUserFolder: "false"
+    globalParent: ""
+  frontend:
+    enableTimecodeForAssets: "false"
+  home:
+    base: "/home"
+  maxPropertiesInNames: "5"
+  maxPropertyLength: "10"
+  media:
+    dockerHighresPath: ""
+  output:
+    namePattern: ""
+  panel:
+    loginRequired: "true"
+  projects:
+    sortBy: "NAME"
+  searchProjectOnPageOpen: "true"
+  showAllBins: "false"
+  useCustomFileName: "false"
+  webconfig:
+    disable: "false"
+
+# MongoDB Configuration
+mongodb:
+  enabled: true
+  fullnameOverride: "mongodb"
+
+  architecture: "replicaset"
+  replicaCount: 3
+
+  auth:
+    rootUser: "root"
+    rootPassword: "bitte"
+
+  persistence:
+    enabled: true
+    size: "20Gi"
+    storageClassName: ""
+    resourcePolicy: "keep"
+
+  metrics:
+    enabled: false
+
+# RabbitMQ Configuration
+rabbitmq:
+  enabled: true
+  fullnameOverride: "rabbitmq"
+
+  replicaCount: 3
+
+  auth:
+    erlangCookie: "VULCANO_SECRET_COOKIE"
+    username: "vulcano"
+    password: "vulcano0479"
+
+  service:
+    type: NodePort
+
+  persistence:
+    enabled: false
+
+  metrics:
+    enabled: false
+
+  jobUpdateQueue: "vulcano-job-updates"
+
+# RBAC Configuration
+rbac:
+  create: true
+
+# Service Account
+serviceAccount:
+  create: true
+  name: vulcano
+  annotations: {}
+
+# Security Context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  fsGroup: 1001
+
+# Pod Security Policy
+podSecurityPolicy:
+  enabled: false
+
+# SMB CSI Driver Configuration (Optional)
+smbCsi:
+  enabled: false
+  username: "username"
+  password: "password"
+  uri: "//xxx.xxx.xxx.xxx/mountpoint"
+
+# Logging Configuration
+logging:
+  fileName: "/data/LOGS/vulcano_k8s.log"
+  fileMaxSize: "10MB"
+  level:
+    org: "INFO"
+    securityFilter: "WARN"
+
+# Management/Metrics Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,beans,loggers,env,prometheus,metrics"
+  endpoint:
+    caches:
+      enabled: "true"
+    prometheus:
+      enabled: "true"
+    health:
+      showDetails: "always"
+      group:
+        readiness:
+          include: "rabbit,diskSpace,mongo,ping"
+  prometheus:
+    metrics:
+      export:
+        enabled: "true"
+  metrics:
+    tags:
+      application: "vulcano-backend"
+    distribution:
+      percentilesHistogram: "true"
+      slo: "50ms, 100ms, 200ms, 300ms, 500ms, 1s"
+    enable:
+      all: "true"
+  health:
+    livenessstate:
+      enabled: "true"
+      showDetails: "always"
+    readinessstate:
+      enabled: "true"
+      showDetails: "always"
+
+# Spring Framework Configuration
+spring:
+  mvc:
+    pathmatch:
+      matchingStrategy: "ANT_PATH_MATCHER"
+  jackson:
+    mapper:
+      acceptCaseInsensitiveEnums: "true"
+    defaultPropertyInclusion: "NON_NULL"
+  jpa:
+    hibernate:
+      ddlAuto: "update"
+      naming:
+        physicalStrategy: "org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl"
+  main:
+    lazyInitialization: "false"
+  threads:
+    virtual:
+      enabled: "false"
+  servlet:
+    multipart:
+      enabled: "true"
+
+# SpringDoc Configuration
+springdoc:
+  swaggerUi:
+    path: "/doc"
+
+# Vulcano Folder Configuration
+folders:
+  pathMapRenderNode: "Z:"
+  pathMapServer: "/data"
+  customCertificates: "/etc/certs"
+  templates: "templates"
+  media:
+    folder: "/highres"
+    extension: ".mov"
+    clientFolder: "/Volumes/helmut_1/vulcano/highres"
+    templatesFolder: "/highres_templates"
+  output:
+    folder: "/data/OUTPUT"
+    deletedFolder: "/highres_deleted"
+  proxy: "/lowres"
+  thumbnails: "/thumbs"
+
+# Vulcano Scanner Configuration
+folderScanner:
+  startD3: "false"
+  startWatcher: "true"
+  maxDepth: "10"
+  allowEmptyFolder: "true"
+  recreateMissingHighres: "true"
+  defaultBin: "Templates"
+
+# Additional Scanner Configuration
+folderscanner:
+  mediaFolder:
+    recreateFolderStructure: "true"
+    templates:
+      client: "/Volumes/helmut_1/vulcano/highres_templates"
+
+# Vulcano Feature Configuration
+features:
+  ignoreMogrt: "false"
+  maxNameLength: "200"
+  logThirdPartyRequests: "false"
+  afxRender: "true"
+  afxCreateMogrt: "true"
+  afxRenderPreview: "true"
+  afxRenderMassJobLimit: "-1"
+  afxRenderOnDemand: "false"
+  cloudmode: "false"
+
+# Housekeeping Configuration
+housekeeping:
+  enabled: "false"
+  maxAge: "14"
+
+# Helmut Configuration
+helmut:
+  enabled: false
+  baseUrl:
+  logRequest: "false"
+  apiToken: ""
+  clientId: ""
+  clientSecret: ""
+  pageSize: "50"
+  cosmo:
+    baseBreadcrumb: ""
+    mappingDest: ""
+    mappingSrc: ""
+    sync: "false"
+
+# Vidispine API Configuration
+vidispine:
+  enabled: false
+  baseUrl: ""
+  baseUrlAuth: ""
+  workflow: ""
+  workflowVersion: ""
+  workflowMogrt: ""
+  workflowVersionMogrt: ""
+  clientId: ""
+  clientSecret: ""
+  storage: ""
+
+# VDB Configuration
+vdb:
+  server: ""
+  simulate: "true"
+
+# NDR Configuration
+ndr:
+  wildcardBid: "xxxxx"
+  wikiUrl:
+  bidLookupUrl:
+
+# Octopus Configuration
+octopus:
+  enabled: false
+  api: ""
+  password: ""
+  startClient: "false"
+  username: ""
+  client:
+    delayInMS: "1000"
+
+# Adobe Libraries API Configuration
+adobe:
+  enabled: false
+  clientToken: ""
+  clientId: ""
+  secret: ""
+  scan: "false"
+  dumpFilepath: ""
+  apiKey: "CCHomeWeb1"
+  librariesIgnore: '"Library to Ignore"'
+
+# Project Configuration
+project:
+  sendToUrls: ""
+  delete:
+    ownerOnly: "true"
+
+# Authentication Configuration
+auth:
+  mode: "MICROSOFT"
+  microsoft:
+    authority:
+    clientId:
+  serviceAdminPassword:
+  keycloak:
+    authority:
+    clientId:
+    clientSecret:
+  secret:
+
+# Admin Users
+adminUsers: |
+  admin1@domain.com
+  admin2@domain.com
+
+# Tomcat Configuration
+tomcat:
+  multipart:
+    maxFileSize: "1000MB"
+    maxRequestSize: "1000MB"
+
+# Network Configuration
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# ConfigMap and Secret Configuration
+config:
+  # Labels for all resources
+  labels:
+    app: "vulcano"
+    version: "1.9.12"

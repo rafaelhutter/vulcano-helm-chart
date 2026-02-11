@@ -1,0 +1,207 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vulcano-config
+  namespace: {{ include "vulcano.namespace" . }}
+  labels:
+    {{- include "vulcano.labels" . | nindent 4 }}
+data:
+  # Logging Configuration
+  logging.file.name: {{ .Values.logging.fileName }}
+  logging.file.path: {{ .Values.logging.filePath }}
+  logging.file.max-size: {{ .Values.logging.fileMaxSize }}
+  logging.logback.rollingpolicy.max-file-size: {{ .Values.logging.fileMaxSize }}
+  logging.level.org: {{ .Values.logging.level.org }}
+  logging.level.de.moovit.vulcano.security.JwtRequestFilter: {{ .Values.logging.level.securityFilter | default "WARN" }}
+  spring.aop.auto: "false"
+
+  # Management/Metrics Configuration
+  management.endpoints.web.exposure.include: {{ .Values.management.endpoints.web.exposure.include | default "health,beans,loggers,env,prometheus,metrics" | quote }}
+  management.endpoint.caches.enabled: {{ .Values.management.endpoint.caches.enabled | default "true" | quote }}
+  management.endpoint.prometheus.enabled: {{ .Values.management.endpoint.prometheus.enabled | default "true" | quote }}
+  management.prometheus.metrics.export.enabled: {{ .Values.management.prometheus.metrics.export.enabled | default "true" | quote }}
+  management.metrics.tags.application: {{ .Values.management.metrics.tags.application | default "vulcano-backend" | quote }}
+  management.metrics.distribution.percentiles-histogram.http.server.requests: {{ .Values.management.metrics.distribution.percentilesHistogram | default "true" | quote }}
+  management.metrics.distribution.slo.http.server.requests: {{ .Values.management.metrics.distribution.slo | default "50ms, 100ms, 200ms, 300ms, 500ms, 1s" | quote }}
+  management.metrics.enable.all: {{ .Values.management.metrics.enable.all | default "true" | quote }}
+  management.endpoint.health.show-details: {{ .Values.management.endpoint.health.showDetails | default "always" | quote }}
+  management.health.livenessstate.enabled: {{ .Values.management.health.livenessstate.enabled | default "true" | quote }}
+  management.health.readinessstate.enabled: {{ .Values.management.health.readinessstate.enabled | default "true" | quote }}
+  management.health.livenessstate.show-details: {{ .Values.management.health.livenessstate.showDetails | default "always" | quote }}
+  management.health.readinessstate.show-details: {{ .Values.management.health.readinessstate.showDetails | default "always" | quote }}
+  management.endpoint.health.group.readiness.include: {{ .Values.management.endpoint.health.group.readiness.include | default "rabbit,diskSpace,mongo,ping" | quote }}
+
+  # Spring Framework Configuration
+  spring.mvc.pathmatch.matching-strategy: {{ .Values.spring.mvc.pathmatch.matchingStrategy | default "ANT_PATH_MATCHER" | quote }}
+  spring.jackson.mapper.accept-case-insensitive-enums: {{ .Values.spring.jackson.mapper.acceptCaseInsensitiveEnums | default "true" | quote }}
+  spring.jackson.default-property-inclusion: {{ .Values.spring.jackson.defaultPropertyInclusion | default "NON_NULL" | quote }}
+  spring.jpa.hibernate.ddl-auto: {{ .Values.spring.jpa.hibernate.ddlAuto | default "update" | quote }}
+  spring.jpa.hibernate.naming.physical-strategy: {{ .Values.spring.jpa.hibernate.naming.physicalStrategy | default "org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl" | quote }}
+  spring.main.lazy-initialization: {{ .Values.spring.main.lazyInitialization | default "false" | quote }}
+  spring.threads.virtual.enabled: {{ .Values.spring.threads.virtual.enabled | default "false" | quote }}
+  spring.servlet.multipart.enabled: {{ .Values.spring.servlet.multipart.enabled | default "true" | quote }}
+  springdoc.swagger-ui.path: {{ .Values.springdoc.swaggerUi.path | default "/doc" | quote }}
+
+  # Server Configuration
+  server.port: "8889"
+  vulcano.webconfig.disable: {{ .Values.vulcano.webconfig.disable | default "false" | quote }}
+
+  # Folder Configuration
+  vulcano.pathmap.rendernode: {{ .Values.folders.pathMapRenderNode | quote }}
+  vulcano.pathmap.server: {{ .Values.folders.pathMapServer | quote }}
+  vulcano.customCertficates: {{ .Values.folders.customCertificates | quote }}
+  vulcano.folderscanner.templates: {{ .Values.folders.templates | quote }}
+  vulcano.folderscanner.mediaExtension: {{ .Values.folders.media.extension | quote }}
+  vulcano.folderscanner.mediaFolder: {{ .Values.folders.media.folder | quote }}
+  vulcano.folderscanner.mediaFolder.client: {{ .Values.folders.media.clientFolder | quote }}
+  vulcano.folderscanner.mediaFolder.templates: {{ .Values.folders.media.templatesFolder | quote }}
+  vulcano.folder.deletedhires: {{ .Values.folders.output.deletedFolder | quote }}
+  vulcano.folderscanner.proxyFolder: {{ .Values.folders.proxy | quote }}
+  vulcano.folderscanner.thumbFolder: {{ .Values.folders.thumbnails | quote }}
+
+  # Scanner Configuration
+  vulcano.folderscanner.startD3: {{ .Values.folderScanner.startD3 | quote }}
+  vulcano.folderscanner.startWatcher: {{ .Values.folderScanner.startWatcher | quote }}
+  vulcano.folderscanner.maxDepth: {{ .Values.folderScanner.maxDepth | quote }}
+  vulcano.folderscanner.allowEmptyFolder: {{ .Values.folderScanner.allowEmptyFolder | quote }}
+  vulcano.folderscanner.recreateMissingHighres: {{ .Values.folderScanner.recreateMissingHighres | quote }}
+  vulcano.folderscanner.defaultBin: {{ .Values.folderScanner.defaultBin | quote }}
+
+  # Feature Configuration
+  vulcano.folder.ignoreMogrt: {{ .Values.features.ignoreMogrt | quote }}
+  vulcano.maxNameLength: {{ .Values.features.maxNameLength | quote }}
+  vulcano.data.logThirdPartyRequests: {{ .Values.features.logThirdPartyRequests | quote }}
+  vulcano.afx.render: {{ .Values.features.afxRender | quote }}
+  vulcano.afx.createMogrt: {{ .Values.features.afxCreateMogrt | default "true" | quote }}
+  vulcano.afx.renderPreview: {{ .Values.features.afxRenderPreview | default "true" | quote }}
+  vulcano.afx.render.mass.job.limit: {{ .Values.features.afxRenderMassJobLimit | default "-1" | quote }}
+  vulcano.afx.render.on.demand: {{ .Values.features.afxRenderOnDemand | default "false" | quote }}
+  {{- if .Values.features.cloudmode }}
+  vulcano.cloudmode: {{ .Values.features.cloudmode | quote }}
+  {{- end }}
+  {{- if .Values.features.webConfigDisable }}
+  vulcano.webconfig.disable: {{ .Values.features.webConfigDisable | quote }}
+  {{- end }}
+
+  # Additional Vulcano Configuration
+  vulcano.subtitle: {{ .Values.vulcano.subtitle | default "" | quote }}
+  vulcano.allowDownload: {{ .Values.vulcano.allowDownload | default "true" | quote }}
+  vulcano.allowDuplicates: {{ .Values.vulcano.allowDuplicates | default "true" | quote }}
+  vulcano.allowLinebreaksByDefault: {{ .Values.vulcano.allowLinebreaksByDefault | default "false" | quote }}
+  vulcano.autologout.disable: {{ .Values.vulcano.autologout.disable | default "false" | quote }}
+  vulcano.autologout.hours: {{ .Values.vulcano.autologout.hours | default "1" | quote }}
+  vulcano.completedAssetInterceptor: {{ .Values.vulcano.completedAssetInterceptor | default "" | quote }}
+  vulcano.completedWebhook: {{ .Values.vulcano.completedWebhook | default "" | quote }}
+  vulcano.createAssetInterceptor: {{ .Values.vulcano.createAssetInterceptor | default "" | quote }}
+  vulcano.folder.createUserFolder: {{ .Values.vulcano.folder.createUserFolder | default "false" | quote }}
+  vulcano.folder.global.parent: {{ .Values.vulcano.folder.globalParent | default "" | quote }}
+  vulcano.frontend.enableTimecodeForAssets: {{ .Values.vulcano.frontend.enableTimecodeForAssets | default "false" | quote }}
+  vulcano.home.base: {{ .Values.vulcano.home.base | default "/home" | quote }}
+  vulcano.maxPropertiesInNames: {{ .Values.vulcano.maxPropertiesInNames | default "5" | quote }}
+  vulcano.maxPropertyLength: {{ .Values.vulcano.maxPropertyLength | default "10" | quote }}
+  vulcano.media.dockerHighresPath: {{ .Values.vulcano.media.dockerHighresPath | default "" | quote }}
+  vulcano.output.name.pattern: {{ .Values.vulcano.output.namePattern | default "" | quote }}
+  vulcano.panel.loginRequired: {{ .Values.vulcano.panel.loginRequired | default "true" | quote }}
+  vulcano.projects.sortBy: {{ .Values.vulcano.projects.sortBy | default "NAME" | quote }}
+  vulcano.searchProjectOnPageOpen: {{ .Values.vulcano.searchProjectOnPageOpen | default "true" | quote }}
+  vulcano.showAllBins: {{ .Values.vulcano.showAllBins | default "false" | quote }}
+  vulcano.useCustomFileName: {{ .Values.vulcano.useCustomFileName | default "false" | quote }}
+
+  # Scanner Configuration
+  vulcano.folderscanner.mediaFolder.recreateFolderStructure: {{ .Values.folderscanner.mediaFolder.recreateFolderStructure | default "false" | quote }}
+  vulcano.folderscanner.mediaFolder.templates.client: {{ .Values.folderscanner.mediaFolder.templates.client | default "/Volumes/helmut_1/vulcano/highres_templates" | quote }}
+
+  # Housekeeping Configuration
+  vulcano.housekeeping.enabled: {{ .Values.housekeeping.enabled | quote }}
+  {{- if .Values.housekeeping.maxAge }}
+  vulcano.housekeeping.maxAge: {{ .Values.housekeeping.maxAge | quote }}
+  {{- end }}
+
+  # Helmut Configuration
+  vulcano.data.helmut.base.url: {{ .Values.helmut.baseUrl | default "https://helmut.moovit24.de/v1" | quote }}
+  vulcano.data.helmut.logRequest: {{ .Values.helmut.logRequest | default "false" | quote }}
+  vulcano.data.helmut.apitoken: {{ .Values.helmut.apiToken | default "" | quote }}
+  vulcano.data.helmut.clientId: {{ .Values.helmut.clientId | default "" | quote }}
+  vulcano.data.helmut.clientSecret: {{ .Values.helmut.clientSecret | default "" | quote }}
+  vulcano.data.helmut.pageSize: {{ .Values.helmut.pageSize | default "50" | quote }}
+  vulcano.data.helmut.cosmo.basebreadcrumb: {{ .Values.helmut.cosmo.baseBreadcrumb | default "" | quote }}
+  vulcano.data.helmut.cosmo.mappingDest: {{ .Values.helmut.cosmo.mappingDest | default "" | quote }}
+  vulcano.data.helmut.cosmo.mappingSrc: {{ .Values.helmut.cosmo.mappingSrc | default "" | quote }}
+  vulcano.data.helmut.cosmo.sync: {{ .Values.helmut.cosmo.sync | default "false" | quote }}
+
+  # Vidispine Configuration
+  vulcano.vidispine.baseUrl: {{ .Values.vidispine.baseUrl | default "" | quote }}
+  vulcano.vidispine.baseUrl.auth: {{ .Values.vidispine.baseUrlAuth | default "" | quote }}
+  vulcano.vidispine.workflow: {{ .Values.vidispine.workflow | default "" | quote }}
+  vulcano.vidispine.workflowVersion: {{ .Values.vidispine.workflowVersion | default "" | quote }}
+  vulcano.vidispine.workflow.mogrt: {{ .Values.vidispine.workflowMogrt | default "" | quote }}
+  vulcano.vidispine.workflowVersion.mogrt: {{ .Values.vidispine.workflowVersionMogrt | default "" | quote }}
+  vulcano.vidispine.clientId: {{ .Values.vidispine.clientId | default "" | quote }}
+  vulcano.vidispine.clientSecret: {{ .Values.vidispine.clientSecret | default "" | quote }}
+  vulcano.vidispine.storage: {{ .Values.vidispine.storage | default "" | quote }}
+
+  # VDB Configuration
+  ndr.vdb.server: {{ .Values.vdb.server | quote }}
+  ndr.vdb.simulate: {{ .Values.vdb.simulate | quote }}
+  ndr.wildcard.bid: {{ .Values.ndr.wildcardBid | default "xxxxx" | quote }}
+  ndr.wikiUrl: {{ .Values.ndr.wikiUrl | default "https://wiki.ndr.mobi/wiki/ndr/view/Anwendungen/Easy%20Insert%202.0%20%20%E2%80%9EVulcano%20%E2%80%9C/" | quote }}
+  ndr.bidLookupUrl: {{ .Values.ndr.bidLookupUrl | default "https://webapps.ndr-net.de/BeitragsIdWebapp2/public/uebersichtView.xhtml" | quote }}
+
+  # Octopus Configuration
+  {{- if .Values.octopus.enabled }}
+  octopus.api: {{ .Values.octopus.api | quote }}
+  octopus.password: {{ .Values.octopus.password | quote }}
+  octopus.startClient: {{ .Values.octopus.startClient | quote }}
+  octopus.username: {{ .Values.octopus.username | quote }}
+  octopus.client.delayInMS: {{ .Values.octopus.client.delayInMS | quote }}
+  {{- end }}
+
+  # Adobe Libraries Configuration
+  {{- if .Values.adobe.enabled }}
+  adobe.libraries.api.client.token: {{ .Values.adobe.clientToken | quote }}
+  adobe.libraries.api.clientId: {{ .Values.adobe.clientId | quote }}
+  adobe.libraries.api.secret: {{ .Values.adobe.secret | quote }}
+  adobe.libraries.scan: {{ .Values.adobe.scan | quote }}
+  adobe.libraries.dump.filepath: {{ .Values.adobe.dumpFilepath | quote }}
+  adobe.libraries.api.key: {{ .Values.adobe.apiKey | default "CCHomeWeb1" | quote }}
+  adobe.libraries.libraries.ignore: {{ .Values.adobe.librariesIgnore | default "\"Library to Ignore\"" | quote }}
+  {{- end }}
+
+  # Authentication Configuration
+  login.mode: {{ .Values.auth.mode | quote }}
+  {{- if eq .Values.auth.mode "MICROSOFT" }}
+  microsoft.auth.authority: {{ .Values.auth.microsoft.authority | quote }}
+  microsoft.auth.clientId: {{ .Values.auth.microsoft.clientId | quote }}
+  {{- end }}
+
+  # Tomcat Configuration
+  server.port: "8889"
+  spring.servlet.multipart.max-file-size: {{ .Values.tomcat.multipart.maxFileSize | quote }}
+  spring.servlet.multipart.max-request-size: {{ .Values.tomcat.multipart.maxRequestSize | quote }}
+  
+  # Project Configuration
+  project.sendTo.Urls: {{ .Values.project.sendToUrls | default "" | quote }}
+  project.delete.ownerOnly: {{ .Values.project.delete.ownerOnly | default "true" | quote }}
+
+  # Auth Configuration
+  auth.service_admin_password: {{ .Values.auth.serviceAdminPassword | default "6qmY$JCaJ@6^#4V" | quote }}
+  auth.keycloak.authority: {{ .Values.auth.keycloak.authority | default "http://localhost:8080/auth/realms/moovit" | quote }}
+  auth.keycloak.clientId: {{ .Values.auth.keycloak.clientId | default "vulcano" | quote }}
+  auth.keycloak.clientSecret: {{ .Values.auth.keycloak.clientSecret | default "2ZHQK6w6sIauHMnJVVZ1LX94tLb6aBtK" | quote }}
+  auth.secret: {{ .Values.auth.secret | default "XKv%Y$gVugN6!6" | quote }}
+  
+  # RabbitMQ Queue Configuration
+  vulcano.jobUpdateQueue: {{ .Values.rabbitmq.jobUpdateQueue | default "vulcano-job-updates" | quote }}
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: admin-users
+  namespace: {{ include "vulcano.namespace" . }}
+  labels:
+    {{- include "vulcano.labels" . | nindent 4 }}
+data:
+  admin-users.txt: |
+{{ .Values.adminUsers | indent 4 }}

@@ -1,0 +1,85 @@
+{{- if .Values.smbCsi.enabled }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: smbcreds
+  namespace: {{ include "vulcano.namespace" . }}
+  labels:
+    {{- include "vulcano.labels" . | nindent 4 }}
+type: Opaque
+data:
+  username: {{ .Values.smbCsi.username | b64enc | quote }}
+  password: {{ .Values.smbCsi.password | b64enc | quote }}
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: smb-vulcano-data
+  labels:
+    {{- include "vulcano.labels" . | nindent 4 }}
+spec:
+  capacity:
+    storage: {{ .Values.vulcano.storage.size }}
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  csi:
+    driver: smb.csi.k8s.io
+    volumeHandle: smb-vulcano-data
+    volumeAttributes:
+      source: {{ .Values.smbCsi.uri | quote }}
+    nodeStageSecretRef:
+      name: smbcreds
+      namespace: {{ include "vulcano.namespace" . }}
+    nodePublishSecretRef:
+      name: smbcreds
+      namespace: {{ include "vulcano.namespace" . }}
+  mountOptions:
+    - dir_mode=0777
+    - file_mode=0777
+    - uid=1001
+    - gid=1001
+    - noperm
+    - mfsymlinks
+    - cache=strict
+    - noserverino
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: smb-vulcano-data
+  namespace: {{ include "vulcano.namespace" . }}
+  labels:
+    {{- include "vulcano.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: {{ .Values.vulcano.storage.size }}
+  storageClassName: ""
+  volumeName: smb-vulcano-data
+{{- else }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: smb-vulcano-data
+  namespace: {{ include "vulcano.namespace" . }}
+  labels:
+    {{- include "vulcano.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    {{- if .Values.vulcano.storage.accessModes }}
+    - {{ .Values.vulcano.storage.accessModes }}
+    {{- else }}
+    - ReadWriteOnce
+    {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.vulcano.storage.size }}
+  storageClassName: "longhorn"
+{{- end }}
