@@ -104,7 +104,28 @@ helm install vulcano ./helm-chart-new \
   -f examples/dev-values.yaml
 ```
 
-### Method 4: External MongoDB and RabbitMQ
+### Method 4: Install from GitHub Pages Helm Repository (empfohlen)
+
+Die einfachste Installationsmethode: Chart direkt aus dem Helm-Repository installieren:
+
+```bash
+# Repository hinzufügen
+helm repo add rafaelhutter https://rafaelhutter.github.io/vulcano-helm-chart
+helm repo update
+
+# Namespace erstellen
+kubectl create namespace vulcano-app
+
+# Chart installieren
+helm install vulcano rafaelhutter/vulcano \
+  --version 1.0.0 \
+  -n vulcano-app \
+  -f custom-values.yaml
+```
+
+Das Repository wird automatisch bei jedem Push auf `main` aktualisiert.
+
+### Method 5: External MongoDB and RabbitMQ
 
 If you have existing MongoDB and RabbitMQ services:
 

@@ -1,0 +1,49 @@
+name: Publish Helm chart to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Helm
+        run: curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+      - name: Helm dependencies
+        run: helm dependency update
+
+      - name: Package chart and generate index
+        run: |
+          helm package .
+          helm repo index . --url https://rafaelhutter.github.io/vulcano-helm-chart
+
+      - name: Prepare Pages content
+        run: |
+          mkdir -p public
+          cp *.tgz index.yaml public/
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
