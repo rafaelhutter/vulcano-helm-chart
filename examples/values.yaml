@@ -1,0 +1,162 @@
+# ============================================================
+#  Vulcano Helm Chart – Customer Values
+#  Füllen Sie alle Felder mit dem Kommentar "# ← ANPASSEN"
+#  aus und führen Sie danach install.sh aus.
+# ============================================================
+
+# -----------------------------------------------------------
+# 1. GRUNDKONFIGURATION
+# -----------------------------------------------------------
+global:
+  namespace: "vulcano-app"           # ← ANPASSEN: Kubernetes Namespace
+  domain: "vulcano.example.com"      # ← ANPASSEN: Ihre Domain
+
+# -----------------------------------------------------------
+# 2. DOCKER IMAGE (Zugangsdaten von Moovit)
+# -----------------------------------------------------------
+imagePullSecrets:
+  enabled: true
+  dockerUsername: "moovit"           # von Moovit bereitgestellt
+  dockerPassword: "DOCKER_PAT"       # ← ANPASSEN: Docker Access Token (von Moovit erhalten)
+  dockerEmail: "support@moovit.de"
+  dockerServer: "https://index.docker.io/v1/"
+
+# -----------------------------------------------------------
+# 3. INGRESS / TLS
+# -----------------------------------------------------------
+vulcano:
+  replicaCount: 1
+
+  ingress:
+    enabled: true
+    className: nginx
+    host: "vulcano.example.com"      # ← ANPASSEN: gleich wie global.domain
+    path: "/"
+    tls:
+      enabled: true
+      source: "letsencrypt"          # Optionen: letsencrypt | existing
+      letsencrypt:
+        enabled: true
+        clusterIssuer: "letsencrypt-prod"
+        email: "admin@example.com"   # ← ANPASSEN: Ihre E-Mail für Let's Encrypt
+      # Alternativ – vorhandenes Zertifikat:
+      # source: "existing"
+      # existing:
+      #   secretName: "tls-vulcano-cert"
+
+  resources:
+    limits:
+      cpu: "2000m"
+      memory: "4Gi"
+    requests:
+      cpu: "500m"
+      memory: "2Gi"
+
+  storage:
+    mountPath: "/data"
+    pvc: "smb-vulcano-data"
+    size: "50Gi"
+    accessModes: "ReadWriteMany"
+
+# -----------------------------------------------------------
+# 4. AUTHENTIFIZIERUNG (Microsoft Azure AD)
+# -----------------------------------------------------------
+auth:
+  mode: "MICROSOFT"                  # Optionen: MICROSOFT | KEYCLOAK
+  microsoft:
+    authority: "https://login.microsoftonline.com/TENANT_ID"   # ← ANPASSEN: Tenant ID eintragen
+    clientId: "APP_CLIENT_ID"                                  # ← ANPASSEN: App Client ID eintragen
+  # Alternativ – Keycloak:
+  # mode: "KEYCLOAK"
+  # keycloak:
+  #   authority: "https://keycloak.example.com/realms/vulcano"
+  #   clientId: "vulcano"
+  #   clientSecret: "SECRET"
+
+# -----------------------------------------------------------
+# 5. ADMIN-BENUTZER
+# -----------------------------------------------------------
+adminUsers: |
+  admin@example.com                  # ← ANPASSEN: E-Mail-Adressen der Admins (eine pro Zeile)
+
+# -----------------------------------------------------------
+# 6. MONGODB
+# -----------------------------------------------------------
+mongodb:
+  enabled: true
+  fullnameOverride: "mongodb"
+  auth:
+    rootUser: "admin"
+    rootPassword: "SICHERES_PASSWORT" # ← ANPASSEN: Starkes Passwort setzen
+  persistence:
+    enabled: true
+    size: "20Gi"
+    storageClassName: ""              # ← ANPASSEN falls nötig (z.B. "local-path")
+    resourcePolicy: "keep"
+
+# -----------------------------------------------------------
+# 7. RABBITMQ
+# -----------------------------------------------------------
+rabbitmq:
+  enabled: true
+  fullnameOverride: "rabbitmq"
+  replicaCount: 1                     # Für HA: 3
+  auth:
+    erlangCookie: "ZUFAELLIGER_LANGER_STRING"  # ← ANPASSEN: Zufälligen langen String eintragen
+    username: "vulcano"
+    password: "SICHERES_PASSWORT"              # ← ANPASSEN: Starkes Passwort setzen
+  service:
+    type: ClusterIP
+  persistence:
+    enabled: false
+
+# -----------------------------------------------------------
+# 8. SMB-SPEICHER (optional – auskommentieren wenn nicht benötigt)
+# -----------------------------------------------------------
+smbCsi:
+  enabled: true
+  uri: "//192.168.1.100/share/vulcano"  # ← ANPASSEN: Ihre NAS/SMB-Adresse
+  username: "smb-user"                   # ← ANPASSEN
+  password: "smb-password"               # ← ANPASSEN
+
+# -----------------------------------------------------------
+# 9. LIZENZ (von Moovit erhalten)
+# -----------------------------------------------------------
+# Lizenzschlüssel unter vulcano.license.key oben in Abschnitt 3 ergänzen:
+#   vulcano:
+#     license:
+#       key: "LIZENZSCHLUESSEL_VON_MOOVIT"
+
+# -----------------------------------------------------------
+# 10. LOGGING & ORDNER (Standardwerte – nur bei Bedarf ändern)
+# -----------------------------------------------------------
+folders:
+  pathMapRenderNode: "Z:"
+  pathMapServer: "/data"
+  templates: "/data/templates"
+  media:
+    folder: "/data/highres"
+    extension: ".mov"
+    clientFolder: "/data/highres"
+    templatesFolder: "/data/highres_templates"
+  proxy: "/data/lowres"
+  thumbnails: "/data/thumbs"
+
+logging:
+  fileName: "/data/logs/vulcano_k8s.log"
+  fileMaxSize: "10MB"
+  level:
+    org: "INFO"
+
+# -----------------------------------------------------------
+# RBAC & Security (Standardwerte – nicht ändern)
+# -----------------------------------------------------------
+rbac:
+  create: true
+serviceAccount:
+  create: true
+  name: vulcano
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  fsGroup: 1001
