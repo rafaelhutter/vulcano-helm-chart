@@ -14,7 +14,7 @@ images:
     # -- Docker repository for Vulcano application
     repository: "moovit/vulcano"
     # -- Docker image tag
-    tag: "1.9.12"
+    tag: "1.9.13"
     # -- Image pull policy
     pullPolicy: "IfNotPresent"
 
@@ -669,4 +669,4 @@ config:
   # -- Labels for all resources
   labels:
     app: "vulcano"
-    version: "1.9.12"
+    version: "1.9.13"

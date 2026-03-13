@@ -1,6 +1,6 @@
 # vulcano
 
-![Version: 1.0.0](https://img.shields.io/badge/Version-1.0.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.9.12](https://img.shields.io/badge/AppVersion-1.9.12-informational?style=flat-square)
+![Version: 1.0.1](https://img.shields.io/badge/Version-1.0.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.9.13](https://img.shields.io/badge/AppVersion-1.9.13-informational?style=flat-square)
 
 Vulcano - Complete application deployment with MongoDB, RabbitMQ, and optional CSI driver
 
@@ -45,7 +45,7 @@ Vulcano - Complete application deployment with MongoDB, RabbitMQ, and optional C
 | auth.mode | string | `"MICROSOFT"` | Authentication mode (MICROSOFT, KEYCLOAK, etc.) |
 | auth.secret | string | `nil` | Authentication secret key |
 | auth.serviceAdminPassword | string | `nil` | Service admin password for authentication |
-| config.labels | object | `{"app":"vulcano","version":"1.9.12"}` | Labels for all resources |
+| config.labels | object | `{"app":"vulcano","version":"1.9.13"}` | Labels for all resources |
 | dataFeedMapping.ignoreDelete | string | `"false"` | Ignore Delete Messages from Datafeed |
 | dataFeedMapping.skipUpdates | string | `"false"` | Skip Asset Creation for Updates from Datafeed |
 | features.afxCreateMogrt | string | `"true"` | Enable creation of MOGRT files during rendering |
@@ -98,10 +98,10 @@ Vulcano - Complete application deployment with MongoDB, RabbitMQ, and optional C
 | housekeeping.maxAge | string | `"14"` | Maximum age in days for housekeeping items before they are automatically cleaned up |
 | imagePullSecrets | object | `{"enabled":true,"secrets":[{"name":"docker-io"}]}` | Image Pull Secrets configuration |
 | imagePullSecrets.enabled | bool | `true` | Enable image pull secrets |
-| images | object | `{"vulcano":{"pullPolicy":"IfNotPresent","repository":"moovit/vulcano","tag":"1.9.12"}}` | Docker Image Configuration |
+| images | object | `{"vulcano":{"pullPolicy":"IfNotPresent","repository":"moovit/vulcano","tag":"1.9.13"}}` | Docker Image Configuration |
 | images.vulcano.pullPolicy | string | `"IfNotPresent"` | Image pull policy |
 | images.vulcano.repository | string | `"moovit/vulcano"` | Docker repository for Vulcano application |
-| images.vulcano.tag | string | `"1.9.12"` | Docker image tag |
+| images.vulcano.tag | string | `"1.9.13"` | Docker image tag |
 | integrations.helmut | object | `{"apiToken":"","baseUrl":"","clientId":"","clientSecret":"","cosmoBaseBreadcrumb":"","cosmoMappingDest":"","cosmoMappingSrc":"","cosmoSync":"false","logRequest":"false","pageSize":"50"}` | Authentication token for Helmut4 media asset management system integration |
 | integrations.helmut.apiToken | string | `""` | Authentication token for Helmut4 media asset management system integration |
 | integrations.helmut.baseUrl | string | `""` | Base URL of the Helmut4 server API (e.g., https://helmut.company.com/api) |
