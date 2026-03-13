@@ -1,49 +1,63 @@
 # ============================================================
-#  Vulcano Helm Chart – Customer Values
-#  Füllen Sie alle Felder mit dem Kommentar "# ← ANPASSEN"
-#  aus und führen Sie danach install.sh aus.
+#  Vulcano Helm Chart - Customer Values
+#  Fill in all fields marked with "# <- REQUIRED"
+#  then run install.sh to deploy.
 # ============================================================
 
 # -----------------------------------------------------------
-# 1. GRUNDKONFIGURATION
+# 1. GLOBAL CONFIGURATION
 # -----------------------------------------------------------
 global:
-  namespace: "vulcano-app"           # ← ANPASSEN: Kubernetes Namespace
-  domain: "vulcano.example.com"      # ← ANPASSEN: Ihre Domain
+  namespace: "vulcano-app"          # <- REQUIRED: Kubernetes namespace
+  domain: "vulcano.example.com"     # <- REQUIRED: Your domain
 
 # -----------------------------------------------------------
-# 2. DOCKER IMAGE (Zugangsdaten von Moovit)
+# 2. DOCKER IMAGE (credentials provided by Moovit)
 # -----------------------------------------------------------
+images:
+  vulcano:
+    repository: "moovit/vulcano"
+    tag: "1.9.13"
+    pullPolicy: "IfNotPresent"
+
 imagePullSecrets:
   enabled: true
-  dockerUsername: "moovit"           # von Moovit bereitgestellt
-  dockerPassword: "DOCKER_PAT"       # ← ANPASSEN: Docker Access Token (von Moovit erhalten)
+  dockerUsername: "moovit"          # provided by Moovit
+  dockerPassword: "DOCKER_PAT"      # <- REQUIRED: Docker access token (provided by Moovit)
   dockerEmail: "support@moovit.de"
   dockerServer: "https://index.docker.io/v1/"
 
 # -----------------------------------------------------------
-# 3. INGRESS / TLS
+# 3. VULCANO APPLICATION
 # -----------------------------------------------------------
 vulcano:
+  enabled: true
   replicaCount: 1
 
+  service:
+    type: ClusterIP
+    port: 8889
+    targetPort: 8889
+
+  # -- Ingress / TLS
   ingress:
     enabled: true
     className: nginx
-    host: "vulcano.example.com"      # ← ANPASSEN: gleich wie global.domain
+    host: "vulcano.example.com"     # <- REQUIRED: same as global.domain
     path: "/"
     tls:
       enabled: true
-      source: "letsencrypt"          # Optionen: letsencrypt | existing
+      source: "letsencrypt"         # Options: letsencrypt | existing
       letsencrypt:
         enabled: true
         clusterIssuer: "letsencrypt-prod"
-        email: "admin@example.com"   # ← ANPASSEN: Ihre E-Mail für Let's Encrypt
-      # Alternativ – vorhandenes Zertifikat:
+        email: "admin@example.com"  # <- REQUIRED: email for Let's Encrypt notifications
+      # Alternative - use an existing certificate:
       # source: "existing"
       # existing:
       #   secretName: "tls-vulcano-cert"
 
+  # -- Resource limits
   resources:
     limits:
       cpu: "2000m"
@@ -52,21 +66,69 @@ vulcano:
       cpu: "500m"
       memory: "2Gi"
 
+  # -- Health checks (disabled by default)
+  livenessProbe:
+    enabled: false
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+  readinessProbe:
+    enabled: false
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+  # -- Persistent storage
   storage:
     mountPath: "/data"
     pvc: "smb-vulcano-data"
     size: "50Gi"
     accessModes: "ReadWriteMany"
 
+  # -- License key (provided by Moovit)
+  license:
+    key: ""                         # <- REQUIRED: license key provided by Moovit
+
+  # -- Application behaviour (optional overrides)
+  # subtitle: ""                    # custom subtitle shown in the web interface header
+  # allowDownload: "true"           # enable download of rendered assets
+  # allowDuplicates: "true"         # allow assets with duplicate names
+  # allowLinebreaksByDefault: "false"
+  # autologout:
+  #   disable: "false"
+  #   hours: "1"                    # hours of inactivity before auto-logout
+  # completedAssetInterceptor: ""   # HTTP endpoint that receives and can modify completed asset data
+  # completedWebhook: ""            # HTTP webhook for notification only (cannot modify data)
+  # createAssetInterceptor: ""      # HTTP endpoint called when a new asset is created
+  # folder:
+  #   createUserFolder: "false"
+  #   globalParent: ""
+  # frontend:
+  #   enableTimecodeForAssets: "false"
+  # maxPropertiesInNames: "5"       # max number of template properties used in auto-generated asset names
+  # maxPropertyLength: "10"         # max character length per property value in asset names
+  # output:
+  #   namePattern: ""               # template pattern for auto-generated output file names
+  # panel:
+  #   loginRequired: "true"         # require login for Adobe Premiere Pro panel
+  # searchProjectOnPageOpen: "true" # auto-load projects on main page open
+  # showAllBins: "false"            # show all bins or only bins with content
+  # useCustomFileName: "false"      # allow users to specify custom filenames
+
 # -----------------------------------------------------------
-# 4. AUTHENTIFIZIERUNG (Microsoft Azure AD)
+# 4. AUTHENTICATION
 # -----------------------------------------------------------
 auth:
-  mode: "MICROSOFT"                  # Optionen: MICROSOFT | KEYCLOAK
+  mode: "MICROSOFT"                 # Options: MICROSOFT | KEYCLOAK
   microsoft:
-    authority: "https://login.microsoftonline.com/TENANT_ID"   # ← ANPASSEN: Tenant ID eintragen
-    clientId: "APP_CLIENT_ID"                                  # ← ANPASSEN: App Client ID eintragen
-  # Alternativ – Keycloak:
+    authority: "https://login.microsoftonline.com/TENANT_ID"  # <- REQUIRED: replace TENANT_ID
+    clientId: "APP_CLIENT_ID"                                 # <- REQUIRED: Azure App Client ID
+  # serviceAdminPassword: ""        # optional service admin password
+
+  # Alternative - Keycloak:
   # mode: "KEYCLOAK"
   # keycloak:
   #   authority: "https://keycloak.example.com/realms/vulcano"
@@ -74,10 +136,10 @@ auth:
   #   clientSecret: "SECRET"
 
 # -----------------------------------------------------------
-# 5. ADMIN-BENUTZER
+# 5. ADMIN USERS
 # -----------------------------------------------------------
 adminUsers: |
-  admin@example.com                  # ← ANPASSEN: E-Mail-Adressen der Admins (eine pro Zeile)
+  admin@example.com                 # <- REQUIRED: admin email addresses, one per line
 
 # -----------------------------------------------------------
 # 6. MONGODB
@@ -85,14 +147,18 @@ adminUsers: |
 mongodb:
   enabled: true
   fullnameOverride: "mongodb"
+  architecture: "replicaset"
+  replicaCount: 3                   # set to 1 for single-node / dev environments
   auth:
     rootUser: "admin"
-    rootPassword: "SICHERES_PASSWORT" # ← ANPASSEN: Starkes Passwort setzen
+    rootPassword: "CHANGE_ME"       # <- REQUIRED: use a strong password
   persistence:
     enabled: true
     size: "20Gi"
-    storageClassName: ""              # ← ANPASSEN falls nötig (z.B. "local-path")
+    storageClassName: ""            # set if required (e.g. "local-path")
     resourcePolicy: "keep"
+  metrics:
+    enabled: false
 
 # -----------------------------------------------------------
 # 7. RABBITMQ
@@ -100,63 +166,182 @@ mongodb:
 rabbitmq:
   enabled: true
   fullnameOverride: "rabbitmq"
-  replicaCount: 1                     # Für HA: 3
+  replicaCount: 1                   # set to 3 for HA
   auth:
-    erlangCookie: "ZUFAELLIGER_LANGER_STRING"  # ← ANPASSEN: Zufälligen langen String eintragen
+    erlangCookie: "RANDOM_LONG_STRING"  # <- REQUIRED: generate a random string
     username: "vulcano"
-    password: "SICHERES_PASSWORT"              # ← ANPASSEN: Starkes Passwort setzen
+    password: "CHANGE_ME"               # <- REQUIRED: use a strong password
   service:
     type: ClusterIP
   persistence:
     enabled: false
+  metrics:
+    enabled: false
 
 # -----------------------------------------------------------
-# 8. SMB-SPEICHER (optional – auskommentieren wenn nicht benötigt)
+# 8. SMB STORAGE (optional - comment out if not needed)
 # -----------------------------------------------------------
 smbCsi:
   enabled: true
-  uri: "//192.168.1.100/share/vulcano"  # ← ANPASSEN: Ihre NAS/SMB-Adresse
-  username: "smb-user"                   # ← ANPASSEN
-  password: "smb-password"               # ← ANPASSEN
+  uri: "//192.168.1.100/share/vulcano"  # <- REQUIRED: your NAS/SMB share path
+  username: "smb-user"                   # <- REQUIRED
+  password: "smb-password"               # <- REQUIRED
 
 # -----------------------------------------------------------
-# 9. LIZENZ (von Moovit erhalten)
-# -----------------------------------------------------------
-# Lizenzschlüssel unter vulcano.license.key oben in Abschnitt 3 ergänzen:
-#   vulcano:
-#     license:
-#       key: "LIZENZSCHLUESSEL_VON_MOOVIT"
-
-# -----------------------------------------------------------
-# 10. LOGGING & ORDNER (Standardwerte – nur bei Bedarf ändern)
+# 9. FOLDER CONFIGURATION
 # -----------------------------------------------------------
 folders:
   pathMapRenderNode: "Z:"
   pathMapServer: "/data"
+  customCertificates: "/etc/certs"
   templates: "/data/templates"
   media:
     folder: "/data/highres"
     extension: ".mov"
     clientFolder: "/data/highres"
     templatesFolder: "/data/highres_templates"
+  output:
+    deletedFolder: "/data/highres_deleted"
   proxy: "/data/lowres"
   thumbnails: "/data/thumbs"
+  # templatesClient: ""             # client-side path mapping for template files
 
+# -----------------------------------------------------------
+# 10. FOLDER SCANNER
+# -----------------------------------------------------------
+folderScanner:
+  startWatcher: "true"              # monitor file system for template changes
+  maxDepth: "10"
+  allowEmptyFolder: "true"
+  recreateMissingHighres: "true"
+  defaultBin: "Templates"
+  # startD3: "false"                # enable Delta Tre sports data integration
+
+# -----------------------------------------------------------
+# 11. FEATURES (optional overrides)
+# -----------------------------------------------------------
+features:
+  afxRender: "true"
+  afxCreateMogrt: "true"
+  afxRenderPreview: "true"
+  afxRenderMassJobLimit: "-1"       # -1 = unlimited
+  afxRenderOnDemand: "false"
+  cloudmode: "false"
+  ignoreMogrt: "false"
+  maxNameLength: "200"
+  logThirdPartyRequests: "false"
+  # afxRenderOnDemandExtended: "false"
+
+# -----------------------------------------------------------
+# 12. LOGGING
+# -----------------------------------------------------------
 logging:
   fileName: "/data/logs/vulcano_k8s.log"
   fileMaxSize: "10MB"
   level:
     org: "INFO"
+    # securityFilter: "WARN"
 
 # -----------------------------------------------------------
-# RBAC & Security (Standardwerte – nicht ändern)
+# 13. HOUSEKEEPING (optional)
+# -----------------------------------------------------------
+housekeeping:
+  enabled: "false"
+  maxAge: "14"                      # max age in days before automatic cleanup
+
+# -----------------------------------------------------------
+# 14. INTEGRATIONS (all optional - uncomment if needed)
+# -----------------------------------------------------------
+
+# -- Helmut4 integration
+# helmut:
+#   enabled: true
+#   baseUrl: "https://helmut.example.com/v1"
+#   apiToken: ""
+#   clientId: ""
+#   clientSecret: ""
+#   pageSize: "50"
+#   logRequest: "false"
+#   cosmo:
+#     baseBreadcrumb: ""
+#     mappingDest: ""
+#     mappingSrc: ""
+#     sync: "false"
+
+# -- Adobe Creative Cloud Libraries integration
+# adobe:
+#   enabled: false
+#   clientToken: ""
+#   clientId: ""
+#   secret: ""
+#   scan: "false"
+#   dumpFilepath: ""
+#   apiKey: "CCHomeWeb1"
+#   librariesIgnore: '"Library to Ignore"'
+
+# -- Vidispine integration
+# vidispine:
+#   enabled: false
+#   baseUrl: ""
+#   baseUrlAuth: ""
+#   workflow: ""
+#   workflowVersion: ""
+#   workflowMogrt: ""
+#   workflowVersionMogrt: ""
+#   clientId: ""
+#   clientSecret: ""
+#   storage: ""
+#   locationValuesUrl: ""
+#   defaultLocation: ""
+
+# -- Octopus newsroom integration
+# octopus:
+#   enabled: false
+#   api: ""
+#   username: ""
+#   password: ""
+#   startClient: "false"
+#   client:
+#     delayInMS: "1000"
+
+# -- NDR VDB integration
+# ndr:
+#   wildcardBid: ""
+#   wikiUrl: ""
+#   bidLookupUrl: ""
+# vdb:
+#   server: ""
+#   simulate: "true"
+
+# -----------------------------------------------------------
+# RBAC & SECURITY (defaults - do not change unless required)
 # -----------------------------------------------------------
 rbac:
   create: true
+
 serviceAccount:
   create: true
   name: vulcano
+
 securityContext:
   runAsNonRoot: true
   runAsUser: 1001
   fsGroup: 1001
+
+podSecurityPolicy:
+  enabled: false
+
+# -----------------------------------------------------------
+# NETWORK (optional)
+# -----------------------------------------------------------
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# -----------------------------------------------------------
+# TOMCAT UPLOAD LIMITS
+# -----------------------------------------------------------
+tomcat:
+  multipart:
+    maxFileSize: "1000MB"
+    maxRequestSize: "1000MB"
