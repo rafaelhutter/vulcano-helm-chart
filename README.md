@@ -4,7 +4,7 @@
 
 Vulcano - Complete application deployment with MongoDB, RabbitMQ, and optional CSI driver
 
-**Homepage:** <https://github.com/moovit/vulcano>
+**Homepage:** <https://github.com/rafaelhutter/vulcano-helm-chart>
 
 ## Maintainers
 
@@ -14,7 +14,7 @@ Vulcano - Complete application deployment with MongoDB, RabbitMQ, and optional C
 
 ## Source Code
 
-* <https://github.com/moovit/vulcano>
+* <https://github.com/rafaelhutter/vulcano-helm-chart>
 
 ## Requirements
 
