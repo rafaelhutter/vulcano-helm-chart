@@ -4,9 +4,9 @@ description: Vulcano - Complete application deployment with MongoDB, RabbitMQ, a
 type: application
 version: 1.0.0
 appVersion: "1.9.12"
-home: https://github.com/moovit/vulcano
+home: https://github.com/rafaelhutter/vulcano-helm-chart
 sources:
-  - https://github.com/moovit/vulcano
+  - https://github.com/rafaelhutter/vulcano-helm-chart
 maintainers:
   - name: Moovit
     email: support@moovit.de
