@@ -60,10 +60,8 @@ vulcano:
         }
     # -- Ingress host
     host: "vulcano.example.com"
-    # -- Enable TLS
-    tls:
-      enabled: false
     path: "/"
+    # -- Enable TLS
     tls:
       enabled: false
       # Certificate source: "letsencrypt" or "existing"
@@ -542,8 +540,6 @@ vidispine:
   workflow: ""
   # -- Version number of the default Vidispine workflow to use
   workflowVersion: ""
-  # -- Specific workflow identifier for MOGRT files in Vidispine
-  workflowMogrt: ""
   # -- Specific workflow identifier for MOGRT files in Vidispine
   workflowMogrt: ""
   # -- Version number of the MOGRT-specific workflow in Vidispine
