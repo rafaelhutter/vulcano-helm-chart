@@ -101,8 +101,23 @@ vulcano:
   # Storage configuration
   storage:
     mountPath: "/data"
+    # -- Name of the PVC that is created by the chart (used when existingClaim is empty)
     pvc: "smb-vulcano-data"
     size: "10Gi"
+    # -- Storage class for the PVC (leave empty for cluster default, set to "-" to omit storageClassName entirely)
+    storageClass: "longhorn"
+    # -- Access mode for the PVC
+    accessModes: ReadWriteOnce
+    # -- Additional labels for the PVC
+    labels: {}
+    # -- Annotations for the PVC.
+    # Example: set helm.sh/resource-policy: keep to prevent deletion on helm uninstall
+    annotations: {}
+    #   helm.sh/resource-policy: keep
+    # -- Name of an existing PVC to mount instead of creating a new one.
+    # When set, no PVC is created by the chart. Useful for custom CSI storage classes or pre-provisioned PV/PVCs.
+    # The PVC/PV itself can be deployed via extraObjects.
+    existingClaim: ""
 
   # Application configuration
   # -- Custom subtitle text displayed in the web interface header
@@ -179,8 +194,15 @@ mongodb:
   auth:
     # -- MongoDB root username
     rootUser: "root"
-    # -- MongoDB root password
+    # -- MongoDB root password (ignored when existingSecret is set)
     rootPassword: "bitte"
+    # -- Name of an existing Kubernetes Secret containing MongoDB credentials.
+    # When set, rootPassword is ignored and the chart will NOT create a mongodb-credentials secret.
+    existingSecret: ""
+    # -- Key inside existingSecret that holds the root password
+    existingPasswordKey: "mongodb-root-password"
+    # -- Key inside existingSecret that holds the username (defaults to plain username from rootUser)
+    existingUsernameKey: ""
 
   persistence:
     # -- Enable MongoDB persistence
@@ -205,12 +227,19 @@ rabbitmq:
   replicaCount: 3
 
   auth:
-    # -- Erlang cookie for RabbitMQ clustering
+    # -- Erlang cookie for RabbitMQ clustering (ignored when existingSecret is set)
     erlangCookie: "VULCANO_SECRET_COOKIE"
     # -- RabbitMQ admin username
     username: "vulcano"
-    # -- RabbitMQ admin password
+    # -- RabbitMQ admin password (ignored when existingSecret is set)
     password: "vulcano0479"
+    # -- Name of an existing Kubernetes Secret containing RabbitMQ credentials.
+    # When set, password and erlangCookie are ignored and the chart will NOT create a rabbitmq-credentials secret.
+    existingSecret: ""
+    # -- Key inside existingSecret that holds the RabbitMQ password
+    existingPasswordKey: "rabbitmq-password"
+    # -- Key inside existingSecret that holds the Erlang cookie
+    existingErlangCookieKey: "rabbitmq-erlang-cookie"
 
   service:
     # -- RabbitMQ service type (ClusterIP, NodePort, LoadBalancer)
@@ -656,6 +685,29 @@ nodeSelector: {}
 tolerations: []
 # -- Affinity rules for pod scheduling
 affinity: {}
+
+# -- Extra Kubernetes objects to deploy alongside the chart.
+# Useful for BitwardenSecrets, custom PVCs, StorageClasses, or any other resource.
+# Supports templating via tpl – you can reference .Release.Name, .Values, etc.
+# Example (Bitwarden Secrets Manager):
+# extraObjects:
+#   - apiVersion: k8s.bitwarden.com/v1
+#     kind: BitwardenSecret
+#     metadata:
+#       name: rabbitmq
+#       namespace: "{{ .Release.Namespace }}"
+#     spec:
+#       organizationId: "<org-id>"
+#       secretName: bw-rabbitmq-secrets
+#       map:
+#         - bwSecretId: <uuid>
+#           secretKeyName: "rabbitmq-password"
+#         - bwSecretId: <uuid>
+#           secretKeyName: "rabbitmq-erlang-cookie"
+#       authToken:
+#         secretName: bw-auth-token
+#         secretKey: token
+extraObjects: []
 
 # Data Feed Mapping Configuration
 dataFeedMapping:

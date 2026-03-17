@@ -8,8 +8,8 @@
 # 1. GLOBAL CONFIGURATION
 # -----------------------------------------------------------
 global:
-  namespace: "vulcano-app"          # <- REQUIRED: Kubernetes namespace
-  domain: "vulcano.example.com"     # <- REQUIRED: Your domain
+  namespace: "vulcano-app" # <- REQUIRED: Kubernetes namespace
+  domain: "vulcano.example.com" # <- REQUIRED: Your domain
 
 # -----------------------------------------------------------
 # 2. DOCKER IMAGE (credentials provided by Moovit)
@@ -22,8 +22,8 @@ images:
 
 imagePullSecrets:
   enabled: true
-  dockerUsername: "moovit"          # provided by Moovit
-  dockerPassword: "DOCKER_PAT"      # <- REQUIRED: Docker access token (provided by Moovit)
+  dockerUsername: "moovit" # provided by Moovit
+  dockerPassword: "DOCKER_PAT" # <- REQUIRED: Docker access token (provided by Moovit)
   dockerEmail: "support@moovit.de"
   dockerServer: "https://index.docker.io/v1/"
 
@@ -43,15 +43,15 @@ vulcano:
   ingress:
     enabled: true
     className: nginx
-    host: "vulcano.example.com"     # <- REQUIRED: same as global.domain
+    host: "vulcano.example.com" # <- REQUIRED: same as global.domain
     path: "/"
     tls:
       enabled: true
-      source: "letsencrypt"         # Options: letsencrypt | existing
+      source: "letsencrypt" # Options: letsencrypt | existing
       letsencrypt:
         enabled: true
         clusterIssuer: "letsencrypt-prod"
-        email: "admin@example.com"  # <- REQUIRED: email for Let's Encrypt notifications
+        email: "admin@example.com" # <- REQUIRED: email for Let's Encrypt notifications
       # Alternative - use an existing certificate:
       # source: "existing"
       # existing:
@@ -87,10 +87,17 @@ vulcano:
     pvc: "smb-vulcano-data"
     size: "50Gi"
     accessModes: "ReadWriteMany"
+    storageClass: "" # storage class for the PVC (e.g. "longhorn", "sp-tanzu2025-sms")
+    labels: {}
+    # Annotations for the PVC - useful to prevent accidental deletion:
+    annotations: {}
+    #   helm.sh/resource-policy: keep
+    # -- Use an existing PVC instead of creating a new one (e.g. from extraObjects or pre-provisioned):
+    # existingClaim: "my-existing-pvc"
 
   # -- License key (provided by Moovit)
   license:
-    key: ""                         # <- REQUIRED: license key provided by Moovit
+    key: "" # <- REQUIRED: license key provided by Moovit
 
   # -- Application behaviour (optional overrides)
   # subtitle: ""                    # custom subtitle shown in the web interface header
@@ -122,10 +129,10 @@ vulcano:
 # 4. AUTHENTICATION
 # -----------------------------------------------------------
 auth:
-  mode: "MICROSOFT"                 # Options: MICROSOFT | KEYCLOAK
+  mode: "MICROSOFT" # Options: MICROSOFT | KEYCLOAK
   microsoft:
-    authority: "https://login.microsoftonline.com/TENANT_ID"  # <- REQUIRED: replace TENANT_ID
-    clientId: "APP_CLIENT_ID"                                 # <- REQUIRED: Azure App Client ID
+    authority: "https://login.microsoftonline.com/TENANT_ID" # <- REQUIRED: replace TENANT_ID
+    clientId: "APP_CLIENT_ID" # <- REQUIRED: Azure App Client ID
   # serviceAdminPassword: ""        # optional service admin password
 
   # Alternative - Keycloak:
@@ -148,14 +155,19 @@ mongodb:
   enabled: true
   fullnameOverride: "mongodb"
   architecture: "replicaset"
-  replicaCount: 3                   # set to 1 for single-node / dev environments
+  replicaCount: 3 # set to 1 for single-node / dev environments
   auth:
     rootUser: "admin"
-    rootPassword: "CHANGE_ME"       # <- REQUIRED: use a strong password
+    rootPassword: "CHANGE_ME" # <- REQUIRED: use a strong password
+    # -- Alternative: reference an existing Kubernetes Secret instead of providing credentials here.
+    # When set, rootPassword above is ignored and no mongodb-credentials Secret is created by this chart.
+    # existingSecret: "bw-mongodb-secrets"
+    # existingPasswordKey: "mongodb-root-password"  # key inside existingSecret
+    # existingUsernameKey: ""                        # key for username (optional; rootUser is used if omitted)
   persistence:
     enabled: true
     size: "20Gi"
-    storageClassName: ""            # set if required (e.g. "local-path")
+    storageClassName: "" # set if required (e.g. "local-path")
     resourcePolicy: "keep"
   metrics:
     enabled: false
@@ -166,11 +178,16 @@ mongodb:
 rabbitmq:
   enabled: true
   fullnameOverride: "rabbitmq"
-  replicaCount: 1                   # set to 3 for HA
+  replicaCount: 1 # set to 3 for HA
   auth:
-    erlangCookie: "RANDOM_LONG_STRING"  # <- REQUIRED: generate a random string
+    erlangCookie: "RANDOM_LONG_STRING" # <- REQUIRED: generate a random string
     username: "vulcano"
-    password: "CHANGE_ME"               # <- REQUIRED: use a strong password
+    password: "CHANGE_ME" # <- REQUIRED: use a strong password
+    # -- Alternative: reference an existing Kubernetes Secret instead of providing credentials here.
+    # When set, password and erlangCookie above are ignored and no rabbitmq-credentials Secret is created.
+    # existingSecret: "bw-rabbitmq-secrets"
+    # existingPasswordKey: "bw-rabbitmq-password"       # key inside existingSecret
+    # existingErlangCookieKey: "bw-rabbitmq-erlang-cookie"  # key inside existingSecret
   service:
     type: ClusterIP
   persistence:
@@ -183,9 +200,9 @@ rabbitmq:
 # -----------------------------------------------------------
 smbCsi:
   enabled: true
-  uri: "//192.168.1.100/share/vulcano"  # <- REQUIRED: your NAS/SMB share path
-  username: "smb-user"                   # <- REQUIRED
-  password: "smb-password"               # <- REQUIRED
+  uri: "//192.168.1.100/share/vulcano" # <- REQUIRED: your NAS/SMB share path
+  username: "smb-user" # <- REQUIRED
+  password: "smb-password" # <- REQUIRED
 
 # -----------------------------------------------------------
 # 9. FOLDER CONFIGURATION
@@ -210,7 +227,7 @@ folders:
 # 10. FOLDER SCANNER
 # -----------------------------------------------------------
 folderScanner:
-  startWatcher: "true"              # monitor file system for template changes
+  startWatcher: "true" # monitor file system for template changes
   maxDepth: "10"
   allowEmptyFolder: "true"
   recreateMissingHighres: "true"
@@ -224,7 +241,7 @@ features:
   afxRender: "true"
   afxCreateMogrt: "true"
   afxRenderPreview: "true"
-  afxRenderMassJobLimit: "-1"       # -1 = unlimited
+  afxRenderMassJobLimit: "-1" # -1 = unlimited
   afxRenderOnDemand: "false"
   cloudmode: "false"
   ignoreMogrt: "false"
@@ -247,7 +264,7 @@ logging:
 # -----------------------------------------------------------
 housekeeping:
   enabled: "false"
-  maxAge: "14"                      # max age in days before automatic cleanup
+  maxAge: "14" # max age in days before automatic cleanup
 
 # -----------------------------------------------------------
 # 14. INTEGRATIONS (all optional - uncomment if needed)
@@ -312,6 +329,54 @@ housekeeping:
 # vdb:
 #   server: ""
 #   simulate: "true"
+
+# -----------------------------------------------------------
+# EXTRA OBJECTS (optional)
+# -----------------------------------------------------------
+# Deploy arbitrary Kubernetes objects alongside this chart.
+# Supports Helm templating ({{ .Release.Namespace }}, {{ .Values.global.namespace }}, etc.).
+# Useful for: Bitwarden/External Secrets, custom PVCs with special storage classes, etc.
+#
+# Example – Bitwarden Secrets Manager (provides secrets to RabbitMQ + MongoDB):
+# extraObjects:
+#   - apiVersion: k8s.bitwarden.com/v1
+#     kind: BitwardenSecret
+#     metadata:
+#       name: rabbitmq
+#       namespace: "{{ .Values.global.namespace }}"
+#     spec:
+#       organizationId: "0b83b58f-0657-4d2d-8e38-b2ea00d406bb"
+#       secretName: bw-rabbitmq-secrets
+#       map:
+#         - bwSecretId: ce01340a-aba4-4fe9-bf39-b3df00f33a31
+#           secretKeyName: "bw-rabbitmq-password"
+#         - bwSecretId: 3e04d72c-f623-424f-8828-b3df00f35493
+#           secretKeyName: "bw-rabbitmq-erlang-cookie"
+#       authToken:
+#         secretName: bw-auth-token
+#         secretKey: token
+#
+# Example – custom PVC (e.g. CSI SMB) that Vulcano mounts via existingClaim:
+# extraObjects:
+#   - apiVersion: v1
+#     kind: PersistentVolumeClaim
+#     metadata:
+#       name: vulcano-data-smb
+#       namespace: "{{ .Values.global.namespace }}"
+#       annotations:
+#         helm.sh/resource-policy: keep
+#     spec:
+#       accessModes:
+#         - ReadWriteMany
+#       storageClassName: "sp-tanzu2025-sms"
+#       resources:
+#         requests:
+#           storage: 8Gi
+# # reference above PVC in vulcano.storage:
+# # vulcano:
+# #   storage:
+# #     existingClaim: "vulcano-data-smb"
+extraObjects: []
 
 # -----------------------------------------------------------
 # RBAC & SECURITY (defaults - do not change unless required)

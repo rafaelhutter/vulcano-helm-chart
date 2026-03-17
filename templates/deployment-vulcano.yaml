@@ -90,13 +90,23 @@ spec:
             - name: spring.data.mongodb.username
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.mongodb.auth.existingSecret }}
+                  name: {{ .Values.mongodb.auth.existingSecret }}
+                  key: {{ .Values.mongodb.auth.existingUsernameKey | default "username" }}
+                  {{- else }}
                   name: mongodb-credentials
                   key: username
+                  {{- end }}
             - name: spring.data.mongodb.password
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.mongodb.auth.existingSecret }}
+                  name: {{ .Values.mongodb.auth.existingSecret }}
+                  key: {{ .Values.mongodb.auth.existingPasswordKey | default "mongodb-root-password" }}
+                  {{- else }}
                   name: mongodb-credentials
                   key: password
+                  {{- end }}
             {{- end }}
 
             # RabbitMQ Configuration
@@ -108,13 +118,23 @@ spec:
             - name: spring.rabbitmq.username
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.rabbitmq.auth.existingSecret }}
+                  name: {{ .Values.rabbitmq.auth.existingSecret }}
+                  key: {{ .Values.rabbitmq.auth.existingUsernameKey | default "username" }}
+                  {{- else }}
                   name: rabbitmq-credentials
                   key: username
+                  {{- end }}
             - name: spring.rabbitmq.password
               valueFrom:
                 secretKeyRef:
+                  {{- if .Values.rabbitmq.auth.existingSecret }}
+                  name: {{ .Values.rabbitmq.auth.existingSecret }}
+                  key: {{ .Values.rabbitmq.auth.existingPasswordKey | default "rabbitmq-password" }}
+                  {{- else }}
                   name: rabbitmq-credentials
                   key: password
+                  {{- end }}
             {{- end }}
 
             # Folder Configuration
@@ -226,7 +246,7 @@ spec:
       volumes:
         - name: data
           persistentVolumeClaim:
-            claimName: {{ .Values.vulcano.storage.pvc }}
+            claimName: {{ .Values.vulcano.storage.existingClaim | default .Values.vulcano.storage.pvc }}
         - name: admin-users
           configMap:
             name: admin-users

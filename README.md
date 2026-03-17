@@ -23,6 +23,98 @@ Vulcano - Complete application deployment with MongoDB, RabbitMQ, and optional C
 | oci://registry-1.docker.io/cloudpirates | mongodb(mongodb) | 0.10.3 |
 | oci://registry-1.docker.io/cloudpirates | rabbitmq(rabbitmq) | 0.2.12 |
 
+## Advanced Configuration
+
+### Existing Secrets (MongoDB & RabbitMQ)
+
+By default the chart creates Kubernetes Secrets for MongoDB and RabbitMQ credentials from the plaintext values in `values.yaml`.
+If you manage secrets externally (e.g. via [Bitwarden Secrets Manager](https://bitwarden.com/products/secrets-manager/), External Secrets Operator, Vault, etc.) you can skip secret creation and point the chart to an existing Secret instead:
+
+```yaml
+mongodb:
+  auth:
+    existingSecret: "bw-mongodb-secrets"       # chart will NOT create a mongodb-credentials Secret
+    existingPasswordKey: "mongodb-root-password"
+    existingUsernameKey: ""                     # leave empty to use rootUser value directly
+
+rabbitmq:
+  auth:
+    existingSecret: "bw-rabbitmq-secrets"      # chart will NOT create a rabbitmq-credentials Secret
+    existingPasswordKey: "bw-rabbitmq-password"
+    existingErlangCookieKey: "bw-rabbitmq-erlang-cookie"
+```
+
+### Extra Objects
+
+`extraObjects` lets you deploy arbitrary Kubernetes resources alongside the chart. Every entry supports Helm templating via `tpl`, so you can reference `.Release.Name`, `.Values.*`, etc.
+
+Typical use-cases:
+- **Bitwarden / External Secrets** – create secrets from an external vault and reference them via `existingSecret` above
+- **Custom PVCs / PVs** – provision a PVC with a special storage class (e.g. CSI SMB) and hand it to the Vulcano pod via `vulcano.storage.existingClaim`
+
+```yaml
+extraObjects:
+  # Bitwarden Secrets Manager – delivers credentials into K8s Secrets
+  - apiVersion: k8s.bitwarden.com/v1
+    kind: BitwardenSecret
+    metadata:
+      name: rabbitmq
+      namespace: "{{ .Values.global.namespace }}"
+    spec:
+      organizationId: "<org-id>"
+      secretName: bw-rabbitmq-secrets
+      map:
+        - bwSecretId: <uuid>
+          secretKeyName: "bw-rabbitmq-password"
+        - bwSecretId: <uuid>
+          secretKeyName: "bw-rabbitmq-erlang-cookie"
+      authToken:
+        secretName: bw-auth-token
+        secretKey: token
+
+  # Custom PVC – e.g. CSI SMB or any other storage class
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: vulcano-data-smb
+      namespace: "{{ .Values.global.namespace }}"
+      annotations:
+        helm.sh/resource-policy: keep
+    spec:
+      accessModes:
+        - ReadWriteMany
+      storageClassName: "sp-tanzu2025-sms"
+      resources:
+        requests:
+          storage: 8Gi
+```
+
+Then reference the PVC:
+
+```yaml
+vulcano:
+  storage:
+    existingClaim: "vulcano-data-smb"
+```
+
+### Persistent Storage
+
+The chart creates a PVC for Vulcano application data by default. You can customise every aspect:
+
+```yaml
+vulcano:
+  storage:
+    size: "50Gi"
+    storageClass: "longhorn"          # storage class; leave empty for cluster default
+    accessModes: ReadWriteOnce
+    labels: {}
+    annotations:
+      helm.sh/resource-policy: keep   # prevent accidental deletion on helm uninstall
+    existingClaim: ""                 # mount a pre-existing PVC instead of creating one
+```
+
+When `existingClaim` is set the chart skips PVC creation entirely and mounts the referenced claim directly into the Vulcano pod.
+
 ## Values
 
 | Key | Type | Default | Description |
@@ -48,6 +140,7 @@ Vulcano - Complete application deployment with MongoDB, RabbitMQ, and optional C
 | config.labels | object | `{"app":"vulcano","version":"1.9.13"}` | Labels for all resources |
 | dataFeedMapping.ignoreDelete | string | `"false"` | Ignore Delete Messages from Datafeed |
 | dataFeedMapping.skipUpdates | string | `"false"` | Skip Asset Creation for Updates from Datafeed |
+| extraObjects | list | `[]` | Extra Kubernetes objects to deploy alongside the chart. Supports Helm templating via `tpl`. Useful for External/Bitwarden Secrets, custom PVCs, StorageClasses, etc. See *Advanced Configuration* above. |
 | features.afxCreateMogrt | string | `"true"` | Enable creation of MOGRT files during rendering |
 | features.afxRender | string | `"true"` | Enable After Effects rendering functionality |
 | features.afxRenderMassJobLimit | string | `"-1"` | Maximum number of assets that can be rendered simultaneously in mass rendering operations |
@@ -157,9 +250,13 @@ Vulcano - Complete application deployment with MongoDB, RabbitMQ, and optional C
 | management.metrics.enable.all | string | `"true"` |  |
 | management.metrics.tags.application | string | `"vulcano-backend"` |  |
 | management.prometheus.metrics.export.enabled | string | `"true"` |  |
-| mongodb | object | `{"architecture":"replicaset","auth":{"rootPassword":"bitte","rootUser":"root"},"enabled":true,"fullnameOverride":"mongodb","metrics":{"enabled":false},"persistence":{"enabled":true,"resourcePolicy":"keep","size":"20Gi","storageClassName":""},"replicaCount":3}` | MongoDB Configuration |
+| mongodb | object | `{...}` | MongoDB Configuration |
 | mongodb.architecture | string | `"replicaset"` | MongoDB architecture (standalone or replicaset) |
-| mongodb.auth.rootPassword | string | `"bitte"` | MongoDB root password |
+| mongodb.auth.existingErlangCookieKey | string | `""` | *(n/a for MongoDB)* |
+| mongodb.auth.existingPasswordKey | string | `"mongodb-root-password"` | Key inside `existingSecret` that holds the root password |
+| mongodb.auth.existingSecret | string | `""` | Name of an existing Secret with MongoDB credentials. When set, `rootPassword` is ignored and no `mongodb-credentials` Secret is created by this chart |
+| mongodb.auth.existingUsernameKey | string | `""` | Key inside `existingSecret` that holds the username. Leave empty to use `rootUser` directly |
+| mongodb.auth.rootPassword | string | `"bitte"` | MongoDB root password (ignored when `existingSecret` is set) |
 | mongodb.auth.rootUser | string | `"root"` | MongoDB root username |
 | mongodb.enabled | bool | `true` | Enable MongoDB deployment |
 | mongodb.fullnameOverride | string | `"mongodb"` | Full name override for MongoDB resources |
@@ -181,9 +278,12 @@ Vulcano - Complete application deployment with MongoDB, RabbitMQ, and optional C
 | podSecurityPolicy.enabled | bool | `false` |  |
 | project.delete.ownerOnly | string | `"true"` | Only allow project deletion by the owner |
 | project.sendToUrls | string | `""` | URLs to send project data to external systems |
-| rabbitmq | object | `{"auth":{"erlangCookie":"VULCANO_SECRET_COOKIE","password":"vulcano0479","username":"vulcano"},"enabled":true,"fullnameOverride":"rabbitmq","jobUpdateQueue":"vulcano-job-updates","metrics":{"enabled":false},"persistence":{"enabled":false},"replicaCount":3,"service":{"type":"NodePort"}}` | RabbitMQ Configuration |
-| rabbitmq.auth.erlangCookie | string | `"VULCANO_SECRET_COOKIE"` | Erlang cookie for RabbitMQ clustering |
-| rabbitmq.auth.password | string | `"vulcano0479"` | RabbitMQ admin password |
+| rabbitmq | object | `{...}` | RabbitMQ Configuration |
+| rabbitmq.auth.erlangCookie | string | `"VULCANO_SECRET_COOKIE"` | Erlang cookie for RabbitMQ clustering (ignored when `existingSecret` is set) |
+| rabbitmq.auth.existingErlangCookieKey | string | `"rabbitmq-erlang-cookie"` | Key inside `existingSecret` that holds the Erlang cookie |
+| rabbitmq.auth.existingPasswordKey | string | `"rabbitmq-password"` | Key inside `existingSecret` that holds the RabbitMQ password |
+| rabbitmq.auth.existingSecret | string | `""` | Name of an existing Secret with RabbitMQ credentials. When set, `password` and `erlangCookie` are ignored and no `rabbitmq-credentials` Secret is created by this chart |
+| rabbitmq.auth.password | string | `"vulcano0479"` | RabbitMQ admin password (ignored when `existingSecret` is set) |
 | rabbitmq.auth.username | string | `"vulcano"` | RabbitMQ admin username |
 | rabbitmq.enabled | bool | `true` | Enable RabbitMQ deployment |
 | rabbitmq.fullnameOverride | string | `"rabbitmq"` | Full name override for RabbitMQ resources |
@@ -286,9 +386,14 @@ Vulcano - Complete application deployment with MongoDB, RabbitMQ, and optional C
 | vulcano.service.targetPort | int | `8889` | Target port |
 | vulcano.service.type | string | `"ClusterIP"` | Service type (ClusterIP, NodePort, LoadBalancer) |
 | vulcano.showAllBins | string | `"false"` | Controls whether the frontend displays all bins in the project structure or only those with content |
+| vulcano.storage.accessModes | string | `"ReadWriteOnce"` | Access mode for the PVC |
+| vulcano.storage.annotations | object | `{}` | Annotations for the PVC. Use `helm.sh/resource-policy: keep` to prevent deletion on `helm uninstall` |
+| vulcano.storage.existingClaim | string | `""` | Name of an existing PVC to mount instead of creating a new one. No PVC is created when set. Pair with `extraObjects` to manage the PVC via the chart |
+| vulcano.storage.labels | object | `{}` | Additional labels for the PVC |
 | vulcano.storage.mountPath | string | `"/data"` |  |
-| vulcano.storage.pvc | string | `"smb-vulcano-data"` |  |
+| vulcano.storage.pvc | string | `"smb-vulcano-data"` | Name of the PVC created by the chart (ignored when `existingClaim` is set) |
 | vulcano.storage.size | string | `"10Gi"` |  |
+| vulcano.storage.storageClass | string | `"longhorn"` | Storage class for the PVC. Leave empty for cluster default, set to `"-"` to omit `storageClassName` entirely |
 | vulcano.subtitle | string | `""` | Custom subtitle text displayed in the web interface header |
 | vulcano.useCustomFileName | string | `"false"` | Allow users to specify custom filenames when creating assets instead of using auto-generated names |
 | vulcano.webconfig.disable | string | `"false"` | Disable the web-based configuration interface |

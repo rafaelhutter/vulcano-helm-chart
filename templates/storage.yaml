@@ -63,14 +63,22 @@ spec:
   storageClassName: ""
   volumeName: smb-vulcano-data
 {{- else }}
+{{- if not .Values.vulcano.storage.existingClaim }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: smb-vulcano-data
+  name: {{ .Values.vulcano.storage.pvc }}
   namespace: {{ include "vulcano.namespace" . }}
   labels:
     {{- include "vulcano.labels" . | nindent 4 }}
+    {{- with .Values.vulcano.storage.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.vulcano.storage.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   accessModes:
     {{- if .Values.vulcano.storage.accessModes }}
@@ -81,5 +89,8 @@ spec:
   resources:
     requests:
       storage: {{ .Values.vulcano.storage.size }}
-  storageClassName: "longhorn"
+  {{- if .Values.vulcano.storage.storageClass }}
+  storageClassName: {{ .Values.vulcano.storage.storageClass | quote }}
+  {{- end }}
+{{- end }}
 {{- end }}

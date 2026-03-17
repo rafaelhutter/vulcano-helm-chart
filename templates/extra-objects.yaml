@@ -1,0 +1,29 @@
+{{/*
+extra-objects.yaml
+Renders arbitrary Kubernetes objects defined in .Values.extraObjects.
+Each entry is processed through tpl, so you can use Helm templating
+(e.g. {{ .Release.Name }}, {{ .Values.global.namespace }}) inside the objects.
+
+Example usage in values.yaml:
+  extraObjects:
+    - apiVersion: k8s.bitwarden.com/v1
+      kind: BitwardenSecret
+      metadata:
+        name: rabbitmq
+        namespace: "{{ .Release.Namespace }}"
+      spec:
+        organizationId: "<org-id>"
+        secretName: bw-rabbitmq-secrets
+        map:
+          - bwSecretId: <uuid>
+            secretKeyName: "rabbitmq-password"
+          - bwSecretId: <uuid>
+            secretKeyName: "rabbitmq-erlang-cookie"
+        authToken:
+          secretName: bw-auth-token
+          secretKey: token
+*/}}
+{{- range .Values.extraObjects }}
+---
+{{ tpl (toYaml .) $ }}
+{{- end }}
