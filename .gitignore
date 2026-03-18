@@ -1,2 +1,2 @@
 index.yaml
-deployments/**/*.secret.yaml
+deployments/
