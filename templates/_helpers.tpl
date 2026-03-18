@@ -77,7 +77,7 @@ MongoDB connection string
 {{- .Values.mongodb.fullnameOverride | default "mongodb" }}.{{ include "vulcano.namespace" . }}.svc.cluster.local
 {{- end }}
 {{- else }}
-{{ .Values.mongodb.externalHost | default "mongodb" }}
+{{- .Values.mongodb.externalHost | default "mongodb" }}
 {{- end }}
 {{- end }}
 
@@ -88,7 +88,7 @@ RabbitMQ connection string
 {{- if .Values.rabbitmq.enabled }}
 {{- .Values.rabbitmq.fullnameOverride | default "rabbitmq" }}.{{ include "vulcano.namespace" . }}.svc.cluster.local
 {{- else }}
-{{ .Values.rabbitmq.externalHost | default "rabbitmq" }}
+{{- .Values.rabbitmq.externalHost | default "rabbitmq" }}
 {{- end }}
 {{- end }}
 

@@ -83,7 +83,7 @@ spec:
             - name: spring.data.mongodb.authentication-database
               value: "admin"
             {{- if .Values.mongodb.replicaSet.enabled }}
-            - name: spring.data.mongodb.replica-set
+            - name: spring.data.mongodb.replica-set-name
               value: {{ .Values.mongodb.replicaSet.name | quote }}
             {{- end }}
             {{- if or .Values.mongodb.enabled .Values.mongodb.externalHost }}

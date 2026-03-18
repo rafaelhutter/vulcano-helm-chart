@@ -48,12 +48,30 @@ rabbitmq:
 
 You can deploy MongoDB and RabbitMQ **once** into a shared namespace (e.g. `vulcano-common`) and then point multiple independent Vulcano instances to those services. This avoids running a separate database stack per customer / environment.
 
+The `deployments/` folder in this repository follows the recommended layout:
+
+```
+deployments/
+  vulcano-common/
+    values.yaml            # shared services (MongoDB + RabbitMQ), committed
+    values.secret.yaml     # credentials, gitignored
+  vulcano-<instance>/
+    values.yaml            # per-instance config, committed
+    values.secret.yaml     # credentials, gitignored
+```
+
+Secret files are excluded from git via `.gitignore` (`deployments/**/*.secret.yaml`).
+
 **Step 1 – Deploy the shared services (once)**
 
-Edit `examples/shared-services-values.yaml` with your credentials, then run:
+Create a `values.yaml` and a `values.secret.yaml` (see `examples/shared-services-values.yaml` as a template), then run:
 
 ```bash
-bash examples/shared-services-install.sh
+helm upgrade --install vulcano-common /path/to/vulcano-helm-chart \
+  --namespace vulcano-common \
+  --create-namespace \
+  --values deployments/vulcano-common/values.yaml \
+  --values deployments/vulcano-common/values.secret.yaml
 ```
 
 This installs MongoDB + RabbitMQ into the `vulcano-common` namespace. After the rollout the services are reachable cluster-internally at:
@@ -62,6 +80,38 @@ This installs MongoDB + RabbitMQ into the `vulcano-common` namespace. After the 
 |---------|------|
 | MongoDB (replicaset) | `mongodb-headless.vulcano-common.svc.cluster.local:27017` |
 | RabbitMQ | `rabbitmq.vulcano-common.svc.cluster.local:5672` |
+
+> **⚠️ MongoDB ReplicaSet – manual initiation required on first install**
+>
+> The `cloudpirates/mongodb` sub-chart does **not** automatically initiate the ReplicaSet.
+> After all 3 pods are `Running`, exec into the primary and run:
+>
+> ```bash
+> kubectl exec -it mongodb-0 -n vulcano-common -- mongosh \
+>   -u admin -p <rootPassword> --authenticationDatabase admin \
+>   --eval 'rs.initiate({
+>     _id: "rs0",
+>     members: [
+>       { _id: 0, host: "mongodb-0.mongodb-headless.vulcano-common.svc.cluster.local:27017" },
+>       { _id: 1, host: "mongodb-1.mongodb-headless.vulcano-common.svc.cluster.local:27017" },
+>       { _id: 2, host: "mongodb-2.mongodb-headless.vulcano-common.svc.cluster.local:27017" }
+>     ]
+>   })'
+> ```
+>
+> Verify with `rs.status()` — one member should show `"stateStr": "PRIMARY"`.
+
+> **⚠️ RabbitMQ – `cloudpirates/rabbitmq` secret key names**
+>
+> The `cloudpirates/rabbitmq` sub-chart writes secrets with the keys `erlang-cookie` and `password`
+> (without the `rabbitmq-` prefix used by other charts). Set these overrides in the shared-services values:
+>
+> ```yaml
+> rabbitmq:
+>   auth:
+>     existingErlangCookieKey: "erlang-cookie"
+>     existingPasswordKey: "password"
+> ```
 
 **Step 2 – Deploy each Vulcano instance**
 
@@ -73,29 +123,46 @@ mongodb:
   externalHost: "mongodb-headless.vulcano-common.svc.cluster.local"
   auth:
     rootUser: "admin"
-    rootPassword: "SAME_AS_SHARED_SERVICES"  # must match shared-services-values.yaml
+    rootPassword: "SAME_AS_SHARED_SERVICES"  # must match shared-services values
   replicaSet:
     enabled: true
-    name: "rs0"           # Bitnami default; adjust if you changed it
+    name: "rs0"
 
 rabbitmq:
   enabled: false          # do NOT deploy RabbitMQ inside this release
   externalHost: "rabbitmq.vulcano-common.svc.cluster.local"
   auth:
     username: "vulcano"
-    password: "SAME_AS_SHARED_SERVICES"      # must match shared-services-values.yaml
+    password: "SAME_AS_SHARED_SERVICES"      # must match shared-services values
 ```
 
 Then deploy the instance:
 
 ```bash
-helm upgrade --install vulcano-customer1 rafaelhutter/vulcano \
+helm upgrade --install vulcano-customer1 /path/to/vulcano-helm-chart \
   --namespace vulcano-customer1 \
   --create-namespace \
-  --values examples/vulcano-only-values.yaml
+  --values deployments/vulcano-customer1/values.yaml \
+  --values deployments/vulcano-customer1/values.secret.yaml
 ```
 
 Repeat Step 2 for every additional Vulcano instance, changing `global.namespace`, `global.domain`, and `vulcano.ingress.host` each time.
+
+> **ℹ️ SMB CSI – use IP address for the server**
+>
+> If the SMB server hostname is not resolvable from within the cluster (e.g. it's a local NAS hostname),
+> use its IP address in `smbCsi.uri`:
+>
+> ```yaml
+> smbCsi:
+>   uri: "//10.0.0.201/RAID/vulcano/myinstance"   # IP, not hostname
+> ```
+
+> **ℹ️ Let's Encrypt HTTP-01 challenge**
+>
+> For automatic TLS via cert-manager, ports **80 and 443** must be reachable from the internet at the
+> domain's public IP. Ensure your router forwards both ports to at least one cluster node running the
+> nginx ingress controller.
 
 ### Extra Objects
 
