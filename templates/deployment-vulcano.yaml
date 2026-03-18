@@ -79,7 +79,7 @@ spec:
             - name: spring.data.mongodb.port
               value: "27017"
             - name: spring.data.mongodb.database
-              value: "vulcano"
+              value: {{ .Values.mongodb.database | default "vulcano" | quote }}
             - name: spring.data.mongodb.authentication-database
               value: "admin"
             {{- if .Values.mongodb.replicaSet.enabled }}
