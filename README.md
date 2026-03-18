@@ -158,6 +158,45 @@ Repeat Step 2 for every additional Vulcano instance, changing `global.namespace`
 >   uri: "//10.0.0.201/RAID/vulcano/myinstance"   # IP, not hostname
 > ```
 
+> **ℹ️ RabbitMQ – external access for render nodes**
+>
+> By default RabbitMQ is only reachable inside the cluster (`ClusterIP`). To allow render nodes in
+> the same LAN to connect, add a `rabbitmq-external` NodePort service via `extraObjects` in your
+> shared-services values (see `deployments/vulcano-common/values.yaml` for a working example):
+>
+> ```yaml
+> extraObjects:
+>   - apiVersion: v1
+>     kind: Service
+>     metadata:
+>       name: rabbitmq-external
+>       namespace: "vulcano-common"
+>     spec:
+>       type: NodePort
+>       selector:
+>         app.kubernetes.io/name: rabbitmq
+>       ports:
+>         - name: amqp
+>           port: 5672
+>           targetPort: amqp
+>           nodePort: 32672      # fixed – survives helm upgrade
+>         - name: management
+>           port: 15672
+>           targetPort: mgmt
+>           nodePort: 31672      # Management UI
+> ```
+>
+> The render node `application.properties`:
+>
+> ```properties
+> spring.rabbitmq.addresses=amqp://<user>:<password>@10.10.10.35:32672,amqp://<user>:<password>@10.10.10.46:32672,amqp://<user>:<password>@10.10.10.51:32672
+> ```
+>
+> Management UI: `http://<node-ip>:31672`
+>
+> Using a dedicated `extraObjects` service (instead of patching the sub-chart service) ensures the
+> NodePort is **declarative** and survives every `helm upgrade` without manual intervention.
+
 > **ℹ️ Let's Encrypt HTTP-01 challenge**
 >
 > For automatic TLS via cert-manager, ports **80 and 443** must be reachable from the internet at the
