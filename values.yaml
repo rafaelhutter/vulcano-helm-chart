@@ -191,6 +191,8 @@ mongodb:
   externalHost: ""
   # -- Full name override for MongoDB resources
   fullnameOverride: "mongodb"
+  # -- MongoDB database name used by Vulcano (defaults to 'vulcano' if not set)
+  database: "vulcano"
   # -- MongoDB architecture (standalone or replicaset)
   architecture: "replicaset"
   # -- Number of MongoDB replicas
