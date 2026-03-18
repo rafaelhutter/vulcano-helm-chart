@@ -86,7 +86,7 @@ spec:
             - name: spring.data.mongodb.replica-set
               value: {{ .Values.mongodb.replicaSet.name | quote }}
             {{- end }}
-            {{- if .Values.mongodb.enabled }}
+            {{- if or .Values.mongodb.enabled .Values.mongodb.externalHost }}
             - name: spring.data.mongodb.username
               valueFrom:
                 secretKeyRef:
@@ -114,7 +114,7 @@ spec:
               value: {{ include "vulcano.rabbitmq.host" . | quote }}
             - name: spring.rabbitmq.port
               value: "5672"
-            {{- if .Values.rabbitmq.enabled }}
+            {{- if or .Values.rabbitmq.enabled .Values.rabbitmq.externalHost }}
             - name: spring.rabbitmq.username
               valueFrom:
                 secretKeyRef:

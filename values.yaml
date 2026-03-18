@@ -182,8 +182,13 @@ vulcano:
 
 # -- MongoDB Configuration
 mongodb:
-  # -- Enable MongoDB deployment
+  # -- Enable MongoDB deployment as part of this release.
+  # Set to false when using an external MongoDB (e.g. deployed in vulcano-common).
   enabled: true
+  # -- External MongoDB host. When set (and enabled=false), Vulcano connects to this host.
+  # Credentials from auth.rootUser / auth.rootPassword (or auth.existingSecret) are still used.
+  # Example: "mongodb-headless.vulcano-common.svc.cluster.local"
+  externalHost: ""
   # -- Full name override for MongoDB resources
   fullnameOverride: "mongodb"
   # -- MongoDB architecture (standalone or replicaset)
@@ -219,8 +224,13 @@ mongodb:
 
 # -- RabbitMQ Configuration
 rabbitmq:
-  # -- Enable RabbitMQ deployment
+  # -- Enable RabbitMQ deployment as part of this release.
+  # Set to false when using an external RabbitMQ (e.g. deployed in vulcano-common).
   enabled: true
+  # -- External RabbitMQ host. When set (and enabled=false), Vulcano connects to this host.
+  # Credentials from auth.username / auth.password (or auth.existingSecret) are still used.
+  # Example: "rabbitmq.vulcano-common.svc.cluster.local"
+  externalHost: ""
   # -- Full name override for RabbitMQ resources
   fullnameOverride: "rabbitmq"
   # -- Number of RabbitMQ replicas

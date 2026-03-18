@@ -1,0 +1,206 @@
+# ============================================================
+#  Vulcano – Application-Only Values
+#  Deploys ONLY the Vulcano application (no MongoDB, no
+#  RabbitMQ). Connects to the shared services deployed in
+#  the "vulcano-common" namespace via shared-services-install.sh
+#
+#  Usage:
+#    helm upgrade --install vulcano rafaelhutter/vulcano \
+#      --namespace vulcano-app \
+#      --create-namespace \
+#      --values examples/vulcano-only-values.yaml
+#
+#  For a second instance, duplicate this file and change:
+#    global.namespace, global.domain, vulcano.ingress.host
+# ============================================================
+
+# -----------------------------------------------------------
+# 1. GLOBAL CONFIGURATION
+# -----------------------------------------------------------
+global:
+  namespace: "vulcano-app"          # <- REQUIRED: unique per Vulcano instance
+  domain: "vulcano.example.com"     # <- REQUIRED: your domain
+
+# -----------------------------------------------------------
+# 2. DOCKER IMAGE
+# -----------------------------------------------------------
+images:
+  vulcano:
+    repository: "moovit/vulcano"
+    tag: "1.9.13"
+    pullPolicy: "IfNotPresent"
+
+imagePullSecrets:
+  enabled: true
+  dockerUsername: "moovit"           # provided by Moovit
+  dockerPassword: "DOCKER_PAT"       # <- REQUIRED: Docker access token
+  dockerEmail: "support@moovit.de"
+  dockerServer: "https://index.docker.io/v1/"
+
+# -----------------------------------------------------------
+# 3. VULCANO APPLICATION
+# -----------------------------------------------------------
+vulcano:
+  enabled: true
+  replicaCount: 1
+
+  service:
+    type: ClusterIP
+    port: 8889
+    targetPort: 8889
+
+  ingress:
+    enabled: true
+    className: nginx
+    host: "vulcano.example.com"      # <- REQUIRED: same as global.domain
+    path: "/"
+    tls:
+      enabled: true
+      source: "letsencrypt"
+      letsencrypt:
+        enabled: true
+        clusterIssuer: "letsencrypt-prod"
+        email: "admin@example.com"   # <- REQUIRED
+
+  resources:
+    limits:
+      cpu: "2000m"
+      memory: "4Gi"
+    requests:
+      cpu: "500m"
+      memory: "2Gi"
+
+  storage:
+    mountPath: "/data"
+    pvc: "smb-vulcano-data"
+    size: "50Gi"
+    accessModes: "ReadWriteMany"
+    storageClass: ""
+
+  license:
+    key: ""                           # <- REQUIRED: provided by Moovit
+
+# -----------------------------------------------------------
+# 4. MONGODB – external, running in vulcano-common
+# -----------------------------------------------------------
+mongodb:
+  enabled: false    # do NOT deploy MongoDB here
+  # Point to the shared MongoDB in vulcano-common.
+  # For replicaset architecture use the headless service:
+  externalHost: "mongodb-headless.vulcano-common.svc.cluster.local"
+  fullnameOverride: "mongodb"
+
+  # Credentials must match what was set in shared-services-values.yaml
+  auth:
+    rootUser: "admin"
+    rootPassword: "CHANGE_ME"        # <- must match shared-services-values.yaml
+
+  replicaSet:
+    enabled: true
+    name: "rs0"                      # Bitnami default replica-set name
+
+# -----------------------------------------------------------
+# 5. RABBITMQ – external, running in vulcano-common
+# -----------------------------------------------------------
+rabbitmq:
+  enabled: false    # do NOT deploy RabbitMQ here
+  # Point to the shared RabbitMQ in vulcano-common:
+  externalHost: "rabbitmq.vulcano-common.svc.cluster.local"
+  fullnameOverride: "rabbitmq"
+
+  # Credentials must match what was set in shared-services-values.yaml
+  auth:
+    username: "vulcano"
+    password: "CHANGE_ME"            # <- must match shared-services-values.yaml
+    erlangCookie: ""                 # not needed for client connections
+
+# -----------------------------------------------------------
+# 6. AUTHENTICATION
+# -----------------------------------------------------------
+auth:
+  mode: "MICROSOFT"
+  microsoft:
+    authority: "https://login.microsoftonline.com/TENANT_ID"  # <- REQUIRED
+    clientId: "APP_CLIENT_ID"                                 # <- REQUIRED
+
+# -----------------------------------------------------------
+# 7. ADMIN USERS
+# -----------------------------------------------------------
+adminUsers: |
+  admin@example.com                  # <- REQUIRED
+
+# -----------------------------------------------------------
+# 8. SMB STORAGE (optional)
+# -----------------------------------------------------------
+smbCsi:
+  enabled: false
+  # enabled: true
+  # uri: "//192.168.1.100/share/vulcano"
+  # username: "smb-user"
+  # password: "smb-password"
+
+# -----------------------------------------------------------
+# 9. FOLDER CONFIGURATION
+# -----------------------------------------------------------
+folders:
+  pathMapRenderNode: "Z:"
+  pathMapServer: "/data"
+  customCertificates: "/etc/certs"
+  templates: "/data/templates"
+  media:
+    folder: "/data/highres"
+    extension: ".mov"
+    clientFolder: "/data/highres"
+    templatesFolder: "/data/highres_templates"
+  output:
+    deletedFolder: "/data/highres_deleted"
+  proxy: "/data/lowres"
+  thumbnails: "/data/thumbs"
+
+# -----------------------------------------------------------
+# 10. FOLDER SCANNER
+# -----------------------------------------------------------
+folderScanner:
+  startWatcher: "true"
+  maxDepth: "10"
+  allowEmptyFolder: "true"
+  recreateMissingHighres: "true"
+  defaultBin: "Templates"
+
+# -----------------------------------------------------------
+# 11. FEATURES
+# -----------------------------------------------------------
+features:
+  afxRender: "true"
+  afxCreateMogrt: "true"
+  afxRenderPreview: "true"
+  afxRenderMassJobLimit: "-1"
+  afxRenderOnDemand: "false"
+  cloudmode: "false"
+  ignoreMogrt: "false"
+  maxNameLength: "200"
+  logThirdPartyRequests: "false"
+
+# -----------------------------------------------------------
+# 12. LOGGING
+# -----------------------------------------------------------
+logging:
+  fileName: "/data/logs/vulcano_k8s.log"
+  fileMaxSize: "10MB"
+  level:
+    org: "INFO"
+
+# -----------------------------------------------------------
+# RBAC & SECURITY
+# -----------------------------------------------------------
+rbac:
+  create: true
+
+serviceAccount:
+  create: true
+  name: vulcano
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  fsGroup: 1001

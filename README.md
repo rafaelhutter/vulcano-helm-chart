@@ -44,6 +44,59 @@ rabbitmq:
     existingErlangCookieKey: "bw-rabbitmq-erlang-cookie"
 ```
 
+### Shared Services / Multi-Instance Deployment
+
+You can deploy MongoDB and RabbitMQ **once** into a shared namespace (e.g. `vulcano-common`) and then point multiple independent Vulcano instances to those services. This avoids running a separate database stack per customer / environment.
+
+**Step 1 – Deploy the shared services (once)**
+
+Edit `examples/shared-services-values.yaml` with your credentials, then run:
+
+```bash
+bash examples/shared-services-install.sh
+```
+
+This installs MongoDB + RabbitMQ into the `vulcano-common` namespace. After the rollout the services are reachable cluster-internally at:
+
+| Service | FQDN |
+|---------|------|
+| MongoDB (replicaset) | `mongodb-headless.vulcano-common.svc.cluster.local:27017` |
+| RabbitMQ | `rabbitmq.vulcano-common.svc.cluster.local:5672` |
+
+**Step 2 – Deploy each Vulcano instance**
+
+Use `examples/vulcano-only-values.yaml` as a starting point. The key settings are:
+
+```yaml
+mongodb:
+  enabled: false          # do NOT deploy MongoDB inside this release
+  externalHost: "mongodb-headless.vulcano-common.svc.cluster.local"
+  auth:
+    rootUser: "admin"
+    rootPassword: "SAME_AS_SHARED_SERVICES"  # must match shared-services-values.yaml
+  replicaSet:
+    enabled: true
+    name: "rs0"           # Bitnami default; adjust if you changed it
+
+rabbitmq:
+  enabled: false          # do NOT deploy RabbitMQ inside this release
+  externalHost: "rabbitmq.vulcano-common.svc.cluster.local"
+  auth:
+    username: "vulcano"
+    password: "SAME_AS_SHARED_SERVICES"      # must match shared-services-values.yaml
+```
+
+Then deploy the instance:
+
+```bash
+helm upgrade --install vulcano-customer1 rafaelhutter/vulcano \
+  --namespace vulcano-customer1 \
+  --create-namespace \
+  --values examples/vulcano-only-values.yaml
+```
+
+Repeat Step 2 for every additional Vulcano instance, changing `global.namespace`, `global.domain`, and `vulcano.ingress.host` each time.
+
 ### Extra Objects
 
 `extraObjects` lets you deploy arbitrary Kubernetes resources alongside the chart. Every entry supports Helm templating via `tpl`, so you can reference `.Release.Name`, `.Values.*`, etc.
@@ -258,7 +311,8 @@ When `existingClaim` is set the chart skips PVC creation entirely and mounts the
 | mongodb.auth.existingUsernameKey | string | `""` | Key inside `existingSecret` that holds the username. Leave empty to use `rootUser` directly |
 | mongodb.auth.rootPassword | string | `"bitte"` | MongoDB root password (ignored when `existingSecret` is set) |
 | mongodb.auth.rootUser | string | `"root"` | MongoDB root username |
-| mongodb.enabled | bool | `true` | Enable MongoDB deployment |
+| mongodb.enabled | bool | `true` | Enable MongoDB deployment as part of this release. Set to `false` when connecting to an external MongoDB (e.g. from `vulcano-common`) |
+| mongodb.externalHost | string | `""` | External MongoDB hostname. When set (and `enabled=false`), Vulcano connects to this host. Credentials from `auth.rootUser` / `auth.rootPassword` (or `auth.existingSecret`) are still required. Example: `mongodb-headless.vulcano-common.svc.cluster.local` |
 | mongodb.fullnameOverride | string | `"mongodb"` | Full name override for MongoDB resources |
 | mongodb.persistence.enabled | bool | `true` | Enable MongoDB persistence |
 | mongodb.persistence.resourcePolicy | string | `"keep"` | Resource policy for persistent volumes |
@@ -285,7 +339,8 @@ When `existingClaim` is set the chart skips PVC creation entirely and mounts the
 | rabbitmq.auth.existingSecret | string | `""` | Name of an existing Secret with RabbitMQ credentials. When set, `password` and `erlangCookie` are ignored and no `rabbitmq-credentials` Secret is created by this chart |
 | rabbitmq.auth.password | string | `"vulcano0479"` | RabbitMQ admin password (ignored when `existingSecret` is set) |
 | rabbitmq.auth.username | string | `"vulcano"` | RabbitMQ admin username |
-| rabbitmq.enabled | bool | `true` | Enable RabbitMQ deployment |
+| rabbitmq.enabled | bool | `true` | Enable RabbitMQ deployment as part of this release. Set to `false` when connecting to an external RabbitMQ (e.g. from `vulcano-common`) |
+| rabbitmq.externalHost | string | `""` | External RabbitMQ hostname. When set (and `enabled=false`), Vulcano connects to this host. Credentials from `auth.username` / `auth.password` (or `auth.existingSecret`) are still required. Example: `rabbitmq.vulcano-common.svc.cluster.local` |
 | rabbitmq.fullnameOverride | string | `"rabbitmq"` | Full name override for RabbitMQ resources |
 | rabbitmq.jobUpdateQueue | string | `"vulcano-job-updates"` | Queue name for job updates |
 | rabbitmq.metrics.enabled | bool | `false` | Enable RabbitMQ metrics |

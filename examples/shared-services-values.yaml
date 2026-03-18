@@ -1,0 +1,87 @@
+# ============================================================
+#  Vulcano – Shared Services Values
+#  Deploys ONLY MongoDB and RabbitMQ to the "vulcano-common"
+#  namespace. No Vulcano application is installed here.
+#
+#  Usage:
+#    bash examples/shared-services-install.sh
+#
+#  After this, deploy each Vulcano instance with:
+#    examples/vulcano-only-values.yaml
+# ============================================================
+
+# -----------------------------------------------------------
+# 1. GLOBAL – namespace for the shared services
+# -----------------------------------------------------------
+global:
+  namespace: "vulcano-common"
+  domain: ""  # not used here
+
+# -----------------------------------------------------------
+# 2. VULCANO APPLICATION – disabled, this release is DB only
+# -----------------------------------------------------------
+vulcano:
+  enabled: false
+
+imagePullSecrets:
+  enabled: false
+
+smbCsi:
+  enabled: false
+
+rbac:
+  create: false
+
+serviceAccount:
+  create: false
+
+# -----------------------------------------------------------
+# 3. MONGODB
+# -----------------------------------------------------------
+mongodb:
+  enabled: true
+  fullnameOverride: "mongodb"
+  architecture: "replicaset"
+  replicaCount: 3        # use 1 for dev / single-node clusters
+
+  auth:
+    rootUser: "admin"
+    rootPassword: "CHANGE_ME"   # <- REQUIRED: use a strong password
+    # Alternative – reference an existing Secret (e.g. from Bitwarden / External Secrets):
+    # existingSecret: "bw-mongodb-secrets"
+    # existingPasswordKey: "mongodb-root-password"
+
+  persistence:
+    enabled: true
+    size: "20Gi"
+    storageClassName: ""          # set if required, e.g. "longhorn"
+    resourcePolicy: "keep"
+
+  metrics:
+    enabled: false
+
+# -----------------------------------------------------------
+# 4. RABBITMQ
+# -----------------------------------------------------------
+rabbitmq:
+  enabled: true
+  fullnameOverride: "rabbitmq"
+  replicaCount: 1        # use 3 for HA
+
+  auth:
+    erlangCookie: "RANDOM_LONG_STRING"  # <- REQUIRED: generate a random string
+    username: "vulcano"
+    password: "CHANGE_ME"               # <- REQUIRED: use a strong password
+    # Alternative – reference an existing Secret:
+    # existingSecret: "bw-rabbitmq-secrets"
+    # existingPasswordKey: "bw-rabbitmq-password"
+    # existingErlangCookieKey: "bw-rabbitmq-erlang-cookie"
+
+  service:
+    type: ClusterIP
+
+  persistence:
+    enabled: false
+
+  metrics:
+    enabled: false
