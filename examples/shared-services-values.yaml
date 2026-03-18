@@ -15,7 +15,7 @@
 # -----------------------------------------------------------
 global:
   namespace: "vulcano-common"
-  domain: ""  # not used here
+  domain: "" # not used here
 
 # -----------------------------------------------------------
 # 2. VULCANO APPLICATION – disabled, this release is DB only
@@ -42,11 +42,11 @@ mongodb:
   enabled: true
   fullnameOverride: "mongodb"
   architecture: "replicaset"
-  replicaCount: 3        # use 1 for dev / single-node clusters
+  replicaCount: 3 # use 1 for dev / single-node clusters
 
   auth:
     rootUser: "admin"
-    rootPassword: "CHANGE_ME"   # <- REQUIRED: use a strong password
+    rootPassword: "CHANGE_ME" # <- REQUIRED: use a strong password
     # Alternative – reference an existing Secret (e.g. from Bitwarden / External Secrets):
     # existingSecret: "bw-mongodb-secrets"
     # existingPasswordKey: "mongodb-root-password"
@@ -54,7 +54,7 @@ mongodb:
   persistence:
     enabled: true
     size: "20Gi"
-    storageClassName: ""          # set if required, e.g. "longhorn"
+    storageClassName: "" # set if required, e.g. "longhorn"
     resourcePolicy: "keep"
 
   metrics:
@@ -66,12 +66,12 @@ mongodb:
 rabbitmq:
   enabled: true
   fullnameOverride: "rabbitmq"
-  replicaCount: 1        # use 3 for HA
+  replicaCount: 1 # use 3 for HA
 
   auth:
-    erlangCookie: "RANDOM_LONG_STRING"  # <- REQUIRED: generate a random string
+    erlangCookie: "RANDOM_LONG_STRING" # <- REQUIRED: generate a random string
     username: "vulcano"
-    password: "CHANGE_ME"               # <- REQUIRED: use a strong password
+    password: "CHANGE_ME" # <- REQUIRED: use a strong password
     # Alternative – reference an existing Secret:
     # existingSecret: "bw-rabbitmq-secrets"
     # existingPasswordKey: "bw-rabbitmq-password"
