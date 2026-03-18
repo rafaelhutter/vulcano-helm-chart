@@ -71,7 +71,7 @@ spec:
           env:
             # Logging Configuration
             - name: JAVA_TOOL_OPTIONS
-              value: "-Dlogging.file.path=/data/logs -Dlogging.file.name=/data/logs/vulcano_k8s.log"
+              value: "-Dlogging.file.path={{ .Values.vulcano.storage.mountPath }}/logs -Dlogging.file.name={{ .Values.logging.fileName }}"
 
             # MongoDB Configuration
             - name: spring.data.mongodb.host
