@@ -16,7 +16,7 @@ data:
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: smb-vulcano-data
+  name: smb-{{ include "vulcano.namespace" . }}-data
   labels:
     {{- include "vulcano.labels" . | nindent 4 }}
 spec:
@@ -27,7 +27,7 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   csi:
     driver: smb.csi.k8s.io
-    volumeHandle: smb-vulcano-data
+    volumeHandle: smb-{{ include "vulcano.namespace" . }}-data
     volumeAttributes:
       source: {{ .Values.smbCsi.uri | quote }}
     nodeStageSecretRef:
@@ -50,7 +50,7 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: smb-vulcano-data
+  name: smb-{{ include "vulcano.namespace" . }}-data
   namespace: {{ include "vulcano.namespace" . }}
   labels:
     {{- include "vulcano.labels" . | nindent 4 }}
@@ -61,7 +61,7 @@ spec:
     requests:
       storage: {{ .Values.vulcano.storage.size }}
   storageClassName: ""
-  volumeName: smb-vulcano-data
+  volumeName: smb-{{ include "vulcano.namespace" . }}-data
 {{- else }}
 {{- if not .Values.vulcano.storage.existingClaim }}
 ---
