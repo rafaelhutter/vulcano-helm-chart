@@ -321,11 +321,19 @@ mongodb:
     # -- Enable MongoDB persistence
     enabled: true
     # -- MongoDB persistent volume size
-    size: "20Gi"
+    size: "50Gi"
     # -- Storage class name for MongoDB
     storageClassName: ""
     # -- Resource policy for persistent volumes
     resourcePolicy: "keep"
+
+  resources:
+    limits:
+      cpu: "2000m"
+      memory: "4Gi"
+    requests:
+      cpu: "1000m"
+      memory: "2Gi"
 
   metrics:
     enabled: false
@@ -366,6 +374,16 @@ rabbitmq:
   persistence:
     # -- Enable RabbitMQ persistence
     enabled: false
+    # -- RabbitMQ persistent volume size
+    # size: "10Gi"
+
+  resources:
+    limits:
+      cpu: "1000m"
+      memory: "2Gi"
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
 
   metrics:
     # -- Enable RabbitMQ metrics
