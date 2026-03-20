@@ -1,0 +1,130 @@
+{{- if .Values.filetransfer.enabled }}
+{{- if .Values.filetransfer.zdfTargets }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filetransfer-zdf-targets
+  namespace: {{ include "vulcano.namespace" . }}
+  labels:
+    {{- include "vulcano.labels" . | nindent 4 }}
+    app: filetransfer
+data:
+  zdf-targets.json: |
+    {{ .Values.filetransfer.zdfTargets | toJson | nindent 4 }}
+{{- end }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.filetransfer.name | default "vulcano-transfer" }}
+  namespace: {{ include "vulcano.namespace" . }}
+  labels:
+    {{- include "vulcano.labels" . | nindent 4 }}
+    app: filetransfer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "vulcano.selectorLabels" . | nindent 6 }}
+      app: filetransfer
+  template:
+    metadata:
+      annotations:
+        checksum/credentials: {{ .Values.auth.serviceAdminPassword | default "" | sha256sum | quote }}
+        {{- if .Values.filetransfer.zdfTargets }}
+        checksum/zdf-targets: {{ .Values.filetransfer.zdfTargets | toJson | sha256sum | quote }}
+        {{- end }}
+      labels:
+        {{- include "vulcano.selectorLabels" . | nindent 8 }}
+        app: filetransfer
+    spec:
+      {{- if .Values.imagePullSecrets.enabled }}
+      imagePullSecrets:
+        - name: docker-io
+      {{- end }}
+
+      containers:
+        - name: filetransfer
+          image: "{{ .Values.images.filetransfer.repository }}:{{ .Values.images.filetransfer.tag }}"
+          imagePullPolicy: {{ .Values.images.filetransfer.pullPolicy | default "IfNotPresent" }}
+
+          ports:
+            - name: http
+              containerPort: {{ .Values.filetransfer.port | default 8999 }}
+              protocol: TCP
+
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: "-Dlogging.file.path=/app/logs -Dlogging.file.name=filetransfer.log"
+            {{- range $key, $val := .Values.filetransfer.properties }}
+            - name: {{ $key }}
+              value: {{ $val | quote }}
+            {{- end }}
+            - name: vulcano.password
+              valueFrom:
+                secretKeyRef:
+                  name: vulcano-credentials
+                  key: service-admin-password
+            - name: vulcano.username
+              value: "service_admin"
+
+          resources:
+            {{- toYaml .Values.filetransfer.resources | nindent 12 }}
+
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.vulcano.storage.mountPath }}
+              readOnly: true
+            {{- if .Values.filetransfer.zdfTargets }}
+            - name: zdf-targets
+              mountPath: /zdf-targets.json
+              subPath: zdf-targets.json
+            {{- end }}
+
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ .Values.vulcano.storage.existingClaim | default .Values.vulcano.storage.pvc }}
+            readOnly: true
+        {{- if .Values.filetransfer.zdfTargets }}
+        - name: zdf-targets
+          configMap:
+            name: filetransfer-zdf-targets
+        {{- end }}
+
+      {{- if .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
+      {{- end }}
+
+      {{- if .Values.affinity }}
+      affinity:
+        {{- toYaml .Values.affinity | nindent 8 }}
+      {{- end }}
+
+      {{- if .Values.tolerations }}
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}
+      {{- end }}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.filetransfer.name | default "vulcano-transfer" }}
+  namespace: {{ include "vulcano.namespace" . }}
+  labels:
+    {{- include "vulcano.labels" . | nindent 4 }}
+    app: filetransfer
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.filetransfer.port | default 8999 }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "vulcano.selectorLabels" . | nindent 4 }}
+    app: filetransfer
+{{- end }}

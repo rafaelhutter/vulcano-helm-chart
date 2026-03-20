@@ -1,0 +1,124 @@
+{{- if .Values.dflconnector.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dflconnector
+  namespace: {{ include "vulcano.namespace" . }}
+  labels:
+    {{- include "vulcano.labels" . | nindent 4 }}
+    app: dflconnector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "vulcano.selectorLabels" . | nindent 6 }}
+      app: dflconnector
+  template:
+    metadata:
+      labels:
+        {{- include "vulcano.selectorLabels" . | nindent 8 }}
+        app: dflconnector
+    spec:
+      {{- if .Values.imagePullSecrets.enabled }}
+      imagePullSecrets:
+        - name: docker-io
+      {{- end }}
+
+      containers:
+        - name: dflconnector
+          image: "{{ .Values.images.dflconnector.repository }}:{{ .Values.images.dflconnector.tag }}"
+          imagePullPolicy: {{ .Values.images.dflconnector.pullPolicy | default "IfNotPresent" }}
+
+          ports:
+            - name: http
+              containerPort: {{ .Values.dflconnector.port | default 8080 }}
+              protocol: TCP
+
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: >-
+                -Dlogging.file.path=/app/logs
+                -Dlogging.file.name=dflconnector.log
+                --add-exports java.base/sun.nio.ch=ALL-UNNAMED
+                --add-opens java.base/java.util=ALL-UNNAMED
+                --add-opens java.base/java.lang=ALL-UNNAMED
+            {{- range $key, $val := .Values.dflconnector.properties }}
+            - name: {{ $key }}
+              value: {{ $val | quote }}
+            {{- end }}
+            - name: vulcano.base.service_admin_password
+              valueFrom:
+                secretKeyRef:
+                  name: vulcano-credentials
+                  key: service-admin-password
+            # MongoDB – derived from chart-level mongodb configuration
+            - name: spring.data.mongodb.host
+              value: {{ include "vulcano.mongodb.host" . | quote }}
+            - name: spring.data.mongodb.port
+              value: "27017"
+            - name: spring.data.mongodb.database
+              value: {{ .Values.mongodb.database | default "vulcano" | quote }}
+            - name: spring.data.mongodb.authentication-database
+              value: "admin"
+            {{- if or .Values.mongodb.enabled .Values.mongodb.externalHost }}
+            - name: spring.data.mongodb.username
+              valueFrom:
+                secretKeyRef:
+                  {{- if .Values.mongodb.auth.existingSecret }}
+                  name: {{ .Values.mongodb.auth.existingSecret }}
+                  key: {{ .Values.mongodb.auth.existingUsernameKey | default "username" }}
+                  {{- else }}
+                  name: mongodb-credentials
+                  key: username
+                  {{- end }}
+            - name: spring.data.mongodb.password
+              valueFrom:
+                secretKeyRef:
+                  {{- if .Values.mongodb.auth.existingSecret }}
+                  name: {{ .Values.mongodb.auth.existingSecret }}
+                  key: {{ .Values.mongodb.auth.existingPasswordKey | default "mongodb-root-password" }}
+                  {{- else }}
+                  name: mongodb-credentials
+                  key: password
+                  {{- end }}
+            {{- end }}
+
+          resources:
+            {{- toYaml .Values.dflconnector.resources | nindent 12 }}
+
+      {{- if .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
+      {{- end }}
+
+      {{- if .Values.affinity }}
+      affinity:
+        {{- toYaml .Values.affinity | nindent 8 }}
+      {{- end }}
+
+      {{- if .Values.tolerations }}
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}
+      {{- end }}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dflconnector
+  namespace: {{ include "vulcano.namespace" . }}
+  labels:
+    {{- include "vulcano.labels" . | nindent 4 }}
+    app: dflconnector
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.dflconnector.port | default 8080 }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "vulcano.selectorLabels" . | nindent 4 }}
+    app: dflconnector
+{{- end }}
