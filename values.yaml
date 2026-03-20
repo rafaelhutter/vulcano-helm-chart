@@ -18,6 +18,16 @@ images:
     # -- Image pull policy
     pullPolicy: "IfNotPresent"
 
+  filetransfer:
+    repository: "moovit/vulcano-filetransfer"
+    tag: "0.0.10"
+    pullPolicy: "IfNotPresent"
+
+  dflconnector:
+    repository: "moovit/vulcano-dfl-connector"
+    tag: "0.2.20"
+    pullPolicy: "IfNotPresent"
+
 # -- Image Pull Secrets configuration
 imagePullSecrets:
   # -- Enable image pull secrets
@@ -29,7 +39,6 @@ imagePullSecrets:
 vulcano:
   enabled: true
   replicaCount: 1
-
   service:
     # -- Service type (ClusterIP, NodePort, LoadBalancer)
     type: ClusterIP
@@ -82,8 +91,6 @@ vulcano:
     requests:
       cpu: "500m"
       memory: "2Gi"
-
-  # Health checks
   livenessProbe:
     enabled: false
     initialDelaySeconds: 30
@@ -179,6 +186,105 @@ vulcano:
   # -- JWT license key for application licensing
   license:
     key: ""
+
+# ---------------------------------------------------------------------------
+# Filetransfer – optional standalone Deployment
+# Connects to the Vulcano backend via the K8s service "vulcano" in the same namespace.
+# ---------------------------------------------------------------------------
+filetransfer:
+  enabled: false
+  name: vulcano-transfer # K8s Service name – must match Vulcano's configured transfer service URL
+  port: 8999
+  resources:
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+  properties:
+    server.port: "8999"
+    springdoc.api-docs.path: "/api-docs"
+    springdoc.swagger-ui.path: "/docs"
+    # Absolute path where transferred files are written (must match the mounted PVC path)
+    # Only relevant when transfer.type is "ftp" or "sftp" – set per deployment, not globally
+    # transfer.destination: "/path/to/destination"
+    # Log all incoming API requests for debugging
+    transfer.logApiRequests: "false"
+    # Transfer protocol / mode: ftp, sftp, or zdf (ZDF Upload Portal via TUS)
+    transfer.type: ""
+    # URL of the Vulcano backend – when running in the same namespace use the K8s service name
+    vulcano.baseUrl: "http://vulcano:8889"
+    # vulcano.username is always "service_admin" – injected automatically by the template
+    # vulcano.password is injected automatically from auth.serviceAdminPassword – do not set here
+
+  # ZDF Upload Portal targets – only required when transfer.type is "zdf".
+  # Rendered as /zdf-targets.json inside the container (mounted via ConfigMap).
+  # Each key is the target name used in the API call; value holds the ZDF invite code.
+  # zdfTargets:
+  #   TARGET1:
+  #     inviteCode: ""  # sensitive – set via values.secret.yaml
+  #   TARGET2:
+  #     inviteCode: ""  # sensitive – set via values.secret.yaml
+
+# ---------------------------------------------------------------------------
+# DFL-Connector – optional standalone Deployment
+# Connects to the Vulcano backend via the K8s service "vulcano" in the same namespace.
+# Requires MongoDB from vulcano-common namespace.
+# ---------------------------------------------------------------------------
+dflconnector:
+  enabled: false
+  port: 8080
+  resources:
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+  properties:
+    server.port: "8080"
+    # MongoDB connection is derived from the chart-level mongodb configuration:
+    # host     → mongodb.externalHost or internal service DNS
+    # database → mongodb.database
+    # username/password → mongodb-credentials secret (or mongodb.auth.existingSecret)
+    logstash.enabled: "false"
+    logging.level.root: "INFO"
+    logging.level.de.moovit.vulcanodflconnector: "INFO"
+    # URL of the Vulcano backend – when running in the same namespace use the K8s service name
+    vulcano.base.url: "http://vulcano:8889/"
+    # vulcano.base.service_admin_password is injected automatically from auth.serviceAdminPassword – do not set here
+    # Log all outgoing Vulcano HTTP requests for debugging
+    vulcano.logRequests: "false"
+    # In-memory DB-cache: evict entries after this many minutes
+    vulcano.cache.db.expireAfterWriteMinutes: "15"
+    vulcano.cache.db.maximumSize: "1000"
+    # In-memory HTTP-cache: evict entries after this many minutes
+    vulcano.cache.http.expireAfterWriteMinutes: "1"
+    vulcano.cache.http.maximumSize: "500"
+    # DFL competition IDs to subscribe to (comma-separated, e.g. DFL-COM-000001)
+    vulcano.dfl.competitionId: ""
+    # DFL season ID (e.g. DFL-SEA-0001K9)
+    vulcano.dfl.seasonId: ""
+    # Live-table parameter identifiers (comma-separated)
+    vulcano.dfl.liveTableParameters: ""
+    # Comma-separated list of DFL service identifiers to subscribe to
+    vulcano.dfl.services: ""
+    # DFL REST endpoint templates – usually no need to change
+    vulcano.dfl.listOfServicesUrl: "https://httpget.distribution.production.datahub-sts.de/DeliveryPlatform/REST/ListOfServices/{clientId}"
+    vulcano.dfl.pullOnceUrl: "https://httpget.distribution.production.datahub-sts.de/DeliveryPlatform/REST/PullOnce/{clientId}/{serviceId}/{parameterId}"
+    vulcano.dfl.serviceInformationUrl: "https://httpget.distribution.production.datahub-sts.de/DeliveryPlatform/REST/ServiceInformation/{clientId}/{serviceId}"
+    # DFL WebSocket endpoint – usually no need to change
+    vulcano.dfl.websocket.url: "wss://ws.distribution.production.datahub-sts.de/DeliveryPlatform/websocket/ServiceRegistration"
+    # DFL client credentials assigned by DFL
+    vulcano.dfl.websocket.clientId: ""
+    vulcano.dfl.websocket.clientName: "Vulcano"
+    # WebSocket timeout and size settings (in milliseconds unless noted)
+    vulcano.dfl.websocket.connect-timeout: "30000"
+    vulcano.dfl.websocket.message-timeout: "300000"
+    vulcano.dfl.websocket.max-message-size: "50MB"
+    vulcano.dfl.websocket.ping-interval-seconds: "10"
+    vulcano.dfl.websocket.pong-timeout-millis: "20000"
 
 # -- MongoDB Configuration
 mongodb:
@@ -657,7 +763,7 @@ project:
 
 # Authentication Configuration
 auth:
-  # -- Authentication mode (MICROSOFT, KEYCLOAK, etc.)
+  # -- Authentication mode (MICROSOFT, KEYCLOAK, HELMUT, BID)
   mode: "MICROSOFT"
   microsoft:
     # -- Microsoft Azure AD authority URL
@@ -727,10 +833,3 @@ dataFeedMapping:
   skipUpdates: "false"
   # -- Ignore Delete Messages from Datafeed
   ignoreDelete: "false"
-
-# ConfigMap and Secret Configuration
-config:
-  # -- Labels for all resources
-  labels:
-    app: "vulcano"
-    version: "1.9.13"
