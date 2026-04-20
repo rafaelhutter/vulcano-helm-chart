@@ -1,12 +1,15 @@
 ## Vulcano Helm Chart Values
 ## Complete application deployment with MongoDB, RabbitMQ, and optional CSI driver
 
+# -- Override the chart name
+nameOverride: ""
+# -- Override the full release name
+fullnameOverride: ""
+
 # -- Global configuration for the Vulcano deployment
 global:
   # -- Kubernetes namespace for the deployment
   namespace: "vulcano-app"
-  # -- Domain name for ingress and services
-  domain: "vulcano.example.com"
 
 # -- Docker Image Configuration
 images:
@@ -140,8 +143,6 @@ vulcano:
     disable: "false"
     # -- Number of hours of inactivity before users are automatically logged out
     hours: "1"
-  # -- Enable support for custom SSL certificates
-  customCertificates: "/etc/certs"
   # -- HTTP endpoint URL that receives completed asset data and can MODIFY it before final storage
   completedAssetInterceptor: ""
   # -- HTTP webhook URL for NOTIFICATION purposes only - receives completed asset data but cannot modify it
@@ -408,10 +409,6 @@ securityContext:
   runAsUser: 1001
   fsGroup: 1001
 
-# Pod Security Policy
-podSecurityPolicy:
-  enabled: false
-
 # SMB CSI Driver Configuration (Optional)
 smbCsi:
   enabled: false
@@ -510,8 +507,6 @@ folders:
   pathMapRenderNode: "Z:"
   # -- Server-side path mapping configuration for shared storage access
   pathMapServer: "/data"
-  # -- Enable support for custom SSL certificates
-  customCertificates: "/etc/certs"
   # -- Root directory path containing all After Effects templates and project files
   templates: "/data/templates"
   media:
@@ -519,8 +514,6 @@ folders:
     folder: "/data/highres"
     # -- Comma-separated list of allowed media file extensions for processing
     extension: ".mov"
-    # -- Comma-separated list of allowed media file extensions for processing
-    mediaExtension: ".mov"
     # -- Client-side path mapping for media files in path replacement operations
     clientFolder: "/data/highres"
     # -- Directory path containing After Effects project templates and MOGRT files
@@ -528,8 +521,6 @@ folders:
   output:
     # -- Folder path where deleted high-resolution rendered files are moved before permanent deletion
     deletedFolder: "/highres_deleted"
-    # -- Folder path where deleted high-resolution rendered files are moved before permanent deletion
-    deletedhires: "/highres_deleted"
   # -- Directory path where low-resolution proxy files are stored
   proxy: "/data/lowres"
   # -- Directory path where thumbnail images are stored
@@ -561,7 +552,12 @@ folderscanner:
       # -- Client-side path mapping for template media files. Used to replace server template paths with client-accessible paths in HiresApiDelegateImpl.mapHiresPath() for template folder access
       client: "/Volumes/helmut_1/vulcano/highres_templates"
 
-# Vulcano Integration Configuration
+# ---------------------------------------------------------------------------
+# Integrations – preferred configuration path
+# Use these keys to configure all third-party integrations.
+# The legacy top-level sections (helmut, vidispine, ndr, vdb, octopus) are still
+# supported as fallback for backwards compatibility but are deprecated.
+# ---------------------------------------------------------------------------
 integrations:
   # -- Authentication token for Helmut4 media asset management system integration
   helmut:
@@ -603,6 +599,8 @@ integrations:
     wildcardBid: ""
   # -- API endpoint URL for Octopus newsroom system integration
   octopus:
+    # -- Enable Octopus newsroom system integration
+    enabled: false
     # -- API endpoint URL for Octopus newsroom system integration
     api: ""
     # -- Delay in milliseconds between Octopus client polling requests
@@ -637,6 +635,24 @@ integrations:
     workflowVersion: ""
     # -- Version number of the MOGRT-specific workflow in Vidispine
     workflowVersionMogrt: ""
+  # -- Adobe Creative Cloud Libraries integration
+  adobe:
+    # -- Enable Adobe Creative Cloud Libraries integration for syncing MOGRT templates
+    enabled: false
+    # -- OAuth access token for Adobe Creative Cloud Libraries API authentication
+    clientToken: ""
+    # -- Adobe IMS Client ID for OAuth authentication flow
+    clientId: ""
+    # -- Adobe IMS Client Secret for OAuth authentication
+    secret: ""
+    # -- Enable automatic synchronization of Adobe Creative Cloud Libraries every 2 minutes
+    scan: "false"
+    # -- File path where a JSON dump of all available Adobe CC Libraries elements will be created
+    dumpFilepath: ""
+    # -- Adobe API Key for accessing Adobe Creative Cloud services
+    apiKey: "CCHomeWeb1"
+    # -- Comma-separated list of Adobe Creative Cloud Library names that should be excluded from synchronization
+    librariesIgnore: '"Library to Ignore"'
 
 # Vulcano Feature Configuration
 features:
@@ -668,108 +684,65 @@ housekeeping:
   # -- Maximum age in days for housekeeping items before they are automatically cleaned up
   maxAge: "14"
 
-# Helmut Configuration
+# ---------------------------------------------------------------------------
+# Legacy integration stubs – do not configure here, use integrations.* instead.
+# These empty structures are required so Helm does not throw nil-pointer errors
+# when evaluating the coalesce fallback chains in configmap.yaml.
+# ---------------------------------------------------------------------------
 helmut:
-  # -- Enable Helmut4 media asset management system integration
-  enabled: false
-  # -- Base URL of the Helmut4 server API (e.g., https://helmut.company.com/api)
   baseUrl:
-  # -- Enable detailed logging of HTTP requests made to Helmut4 API
-  logRequest: "false"
-  # -- Authentication token for Helmut4 media asset management system integration
+  logRequest: ""
   apiToken: ""
-  # -- OAuth client identifier for Helmut4 API authentication
   clientId: ""
-  # -- OAuth client secret for secure Helmut4 API authentication
   clientSecret: ""
-  # -- Number of items per page when fetching data from Helmut4 API
-  pageSize: "50"
+  pageSize: ""
   cosmo:
-    # -- Base breadcrumb path for Helmut4 Cosmo workspace navigation. Defines the starting point for project and asset browsing
     baseBreadcrumb: ""
-    # -- Destination path mapping for Helmut4 Cosmo integration. Maps Vulcano asset locations to Cosmo workspace structure
     mappingDest: ""
-    # -- Source path mapping for Helmut4 Cosmo integration. Maps Cosmo workspace paths to Vulcano internal structure
     mappingSrc: ""
-    # -- Enable synchronization between Vulcano assets and Helmut4 Cosmo workspace. Keeps asset metadata and status in sync
-    sync: "false"
+    sync: ""
 
-# Vidispine API Configuration
 vidispine:
-  enabled: false
-  # -- Base URL for Vidispine media asset management system API
   baseUrl: ""
-  # -- Authentication endpoint URL for Vidispine system
   baseUrlAuth: ""
-  # -- Default workflow identifier in Vidispine for processing uploaded assets
   workflow: ""
-  # -- Version number of the default Vidispine workflow to use
   workflowVersion: ""
-  # -- Specific workflow identifier for MOGRT files in Vidispine
   workflowMogrt: ""
-  # -- Version number of the MOGRT-specific workflow in Vidispine
   workflowVersionMogrt: ""
-  # -- OAuth client identifier for Vidispine API authentication
   clientId: ""
-  # -- OAuth client secret for secure Vidispine API authentication
   clientSecret: ""
-  # -- Vidispine storage identifier for file operations
   storage: ""
-  # -- URL for retrieving allowed values for the Location metadata field from Vidispine
   locationValuesUrl: ""
-  # -- Default location value to be pre-selected in the location selector
   defaultLocation: ""
 
-# VDB Configuration
 vdb:
-  # -- Server hostname or URL for the NDR VDB system
   server: ""
-  # -- Enable simulation mode for VDB operations without making actual network calls
-  simulate: "true"
+  simulate: ""
 
-# NDR Configuration
 ndr:
-  # -- Wildcard BID pattern used for broadcast ID matching in the NDR VDB system
-  wildcardBid: "xxxxx"
-  # -- URL to the NDR VDB documentation wiki
-  wikiUrl:
-  # -- URL endpoint for looking up BID (Broadcast ID) information in the NDR VDB system
-  bidLookupUrl:
+  wildcardBid: ""
+  wikiUrl: ""
+  bidLookupUrl: ""
 
-# Octopus Configuration
 octopus:
-  # -- Enable Octopus newsroom system integration for receiving MOS messages
   enabled: false
-  # -- API endpoint URL for Octopus newsroom system integration
   api: ""
-  # -- Password for authenticating with the Octopus newsroom system
   password: ""
-  # -- Enable the Octopus client for receiving and processing MOS messages
-  startClient: "false"
-  # -- Username for authenticating with the Octopus newsroom system
+  startClient: ""
   username: ""
   client:
-    # -- Delay in milliseconds between Octopus client polling requests
-    delayInMS: "1000"
+    delayInMS: ""
 
-# Adobe Libraries API Configuration
+# Legacy adobe stub – use integrations.adobe instead.
 adobe:
-  # -- Enable Adobe Creative Cloud Libraries integration for syncing MOGRT templates
   enabled: false
-  # -- OAuth access token for Adobe Creative Cloud Libraries API authentication
   clientToken: ""
-  # -- Adobe IMS Client ID for OAuth authentication flow
   clientId: ""
-  # -- Adobe IMS Client Secret for OAuth authentication
   secret: ""
-  # -- Enable automatic synchronization of Adobe Creative Cloud Libraries every 2 minutes
-  scan: "false"
-  # -- File path where a JSON dump of all available Adobe CC Libraries elements will be created
+  scan: ""
   dumpFilepath: ""
-  # -- Adobe API Key for accessing Adobe Creative Cloud services
-  apiKey: "CCHomeWeb1"
-  # -- Comma-separated list of Adobe Creative Cloud Library names that should be excluded from synchronization
-  librariesIgnore: '"Library to Ignore"'
+  apiKey: ""
+  librariesIgnore: ""
 
 # Project Configuration
 project:

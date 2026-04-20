@@ -13,6 +13,9 @@ metadata:
     {{- end }}
     {{- if and .Values.vulcano.ingress.tls.enabled (eq .Values.vulcano.ingress.tls.source "letsencrypt") .Values.vulcano.ingress.tls.letsencrypt.enabled }}
     cert-manager.io/cluster-issuer: {{ .Values.vulcano.ingress.tls.letsencrypt.clusterIssuer | quote }}
+    {{- if .Values.vulcano.ingress.tls.letsencrypt.email }}
+    cert-manager.io/issuer-email: {{ .Values.vulcano.ingress.tls.letsencrypt.email | quote }}
+    {{- end }}
     {{- end }}
 spec:
   {{- if .Values.vulcano.ingress.className }}

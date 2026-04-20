@@ -51,6 +51,9 @@ data:
   vulcano.pathmap.rendernode: {{ .Values.folders.pathMapRenderNode | quote }}
   vulcano.pathmap.server: {{ .Values.folders.pathMapServer | quote }}
   vulcano.customCertficates: {{ .Values.folders.customCertificates | quote }}
+  {{- if .Values.folders.templatesClient }}
+  vulcano.folder.templates.client: {{ .Values.folders.templatesClient | quote }}
+  {{- end }}
   vulcano.folderscanner.templates: {{ .Values.folders.templates | quote }}
   vulcano.folderscanner.mediaExtension: {{ .Values.folders.media.extension | quote }}
   vulcano.folderscanner.mediaFolder: {{ .Values.folders.media.folder | quote }}
@@ -77,6 +80,7 @@ data:
   vulcano.afx.renderPreview: {{ .Values.features.afxRenderPreview | default "true" | quote }}
   vulcano.afx.render.mass.job.limit: {{ .Values.features.afxRenderMassJobLimit | default "-1" | quote }}
   vulcano.afx.render.on.demand: {{ .Values.features.afxRenderOnDemand | default "false" | quote }}
+  vulcano.afx.render.on.demand.extended: {{ .Values.features.afxRenderOnDemandExtended | default "false" | quote }}
   {{- if .Values.features.cloudmode }}
   vulcano.cloudmode: {{ .Values.features.cloudmode | quote }}
   {{- end }}
@@ -119,55 +123,62 @@ data:
   {{- end }}
 
   # Helmut Configuration
-  vulcano.data.helmut.base.url: {{ .Values.helmut.baseUrl | default "https://helmut.moovit24.de/v1" | quote }}
-  vulcano.data.helmut.logRequest: {{ .Values.helmut.logRequest | default "false" | quote }}
-  vulcano.data.helmut.apitoken: {{ .Values.helmut.apiToken | default "" | quote }}
-  vulcano.data.helmut.clientId: {{ .Values.helmut.clientId | default "" | quote }}
-  vulcano.data.helmut.clientSecret: {{ .Values.helmut.clientSecret | default "" | quote }}
-  vulcano.data.helmut.pageSize: {{ .Values.helmut.pageSize | default "50" | quote }}
-  vulcano.data.helmut.cosmo.basebreadcrumb: {{ .Values.helmut.cosmo.baseBreadcrumb | default "" | quote }}
-  vulcano.data.helmut.cosmo.mappingDest: {{ .Values.helmut.cosmo.mappingDest | default "" | quote }}
-  vulcano.data.helmut.cosmo.mappingSrc: {{ .Values.helmut.cosmo.mappingSrc | default "" | quote }}
-  vulcano.data.helmut.cosmo.sync: {{ .Values.helmut.cosmo.sync | default "false" | quote }}
+  # integrations.helmut.* takes precedence; helmut.* is kept for backwards compatibility
+  vulcano.data.helmut.base.url: {{ coalesce .Values.integrations.helmut.baseUrl .Values.helmut.baseUrl "https://helmut.moovit24.de/v1" | quote }}
+  vulcano.data.helmut.logRequest: {{ coalesce .Values.integrations.helmut.logRequest .Values.helmut.logRequest "false" | quote }}
+  vulcano.data.helmut.apitoken: {{ coalesce .Values.integrations.helmut.apiToken .Values.helmut.apiToken "" | quote }}
+  vulcano.data.helmut.clientId: {{ coalesce .Values.integrations.helmut.clientId .Values.helmut.clientId "" | quote }}
+  vulcano.data.helmut.clientSecret: {{ coalesce .Values.integrations.helmut.clientSecret .Values.helmut.clientSecret "" | quote }}
+  vulcano.data.helmut.pageSize: {{ coalesce .Values.integrations.helmut.pageSize .Values.helmut.pageSize "50" | quote }}
+  vulcano.data.helmut.cosmo.basebreadcrumb: {{ coalesce .Values.integrations.helmut.cosmoBaseBreadcrumb .Values.helmut.cosmo.baseBreadcrumb "" | quote }}
+  vulcano.data.helmut.cosmo.mappingDest: {{ coalesce .Values.integrations.helmut.cosmoMappingDest .Values.helmut.cosmo.mappingDest "" | quote }}
+  vulcano.data.helmut.cosmo.mappingSrc: {{ coalesce .Values.integrations.helmut.cosmoMappingSrc .Values.helmut.cosmo.mappingSrc "" | quote }}
+  vulcano.data.helmut.cosmo.sync: {{ coalesce .Values.integrations.helmut.cosmoSync .Values.helmut.cosmo.sync "false" | quote }}
 
   # Vidispine Configuration
-  vulcano.vidispine.baseUrl: {{ .Values.vidispine.baseUrl | default "" | quote }}
-  vulcano.vidispine.baseUrl.auth: {{ .Values.vidispine.baseUrlAuth | default "" | quote }}
-  vulcano.vidispine.workflow: {{ .Values.vidispine.workflow | default "" | quote }}
-  vulcano.vidispine.workflowVersion: {{ .Values.vidispine.workflowVersion | default "" | quote }}
-  vulcano.vidispine.workflow.mogrt: {{ .Values.vidispine.workflowMogrt | default "" | quote }}
-  vulcano.vidispine.workflowVersion.mogrt: {{ .Values.vidispine.workflowVersionMogrt | default "" | quote }}
-  vulcano.vidispine.clientId: {{ .Values.vidispine.clientId | default "" | quote }}
-  vulcano.vidispine.clientSecret: {{ .Values.vidispine.clientSecret | default "" | quote }}
-  vulcano.vidispine.storage: {{ .Values.vidispine.storage | default "" | quote }}
-  vulcano.vidispine.locationValuesUrl: {{ .Values.vidispine.locationValuesUrl | default "" | quote }}
-  vulcano.vidispine.defaultLocation: {{ .Values.vidispine.defaultLocation | default "" | quote }}
+  # integrations.vidispine.* takes precedence; vidispine.* is kept for backwards compatibility
+  vulcano.vidispine.baseUrl: {{ coalesce .Values.integrations.vidispine.baseUrl .Values.vidispine.baseUrl "" | quote }}
+  vulcano.vidispine.baseUrl.auth: {{ coalesce .Values.integrations.vidispine.baseUrlAuth .Values.vidispine.baseUrlAuth "" | quote }}
+  vulcano.vidispine.workflow: {{ coalesce .Values.integrations.vidispine.workflow .Values.vidispine.workflow "" | quote }}
+  vulcano.vidispine.workflowVersion: {{ coalesce .Values.integrations.vidispine.workflowVersion .Values.vidispine.workflowVersion "" | quote }}
+  vulcano.vidispine.workflow.mogrt: {{ coalesce .Values.integrations.vidispine.workflowMogrt .Values.vidispine.workflowMogrt "" | quote }}
+  vulcano.vidispine.workflowVersion.mogrt: {{ coalesce .Values.integrations.vidispine.workflowVersionMogrt .Values.vidispine.workflowVersionMogrt "" | quote }}
+  vulcano.vidispine.clientId: {{ coalesce .Values.integrations.vidispine.clientId .Values.vidispine.clientId "" | quote }}
+  vulcano.vidispine.clientSecret: {{ coalesce .Values.integrations.vidispine.clientSecret .Values.vidispine.clientSecret "" | quote }}
+  vulcano.vidispine.storage: {{ coalesce .Values.integrations.vidispine.storage .Values.vidispine.storage "" | quote }}
+  vulcano.vidispine.locationValuesUrl: {{ coalesce .Values.integrations.vidispine.locationValuesUrl .Values.vidispine.locationValuesUrl "" | quote }}
+  vulcano.vidispine.defaultLocation: {{ coalesce .Values.integrations.vidispine.defaultLocation .Values.vidispine.defaultLocation "" | quote }}
 
-  # VDB Configuration
-  ndr.vdb.server: {{ .Values.vdb.server | quote }}
-  ndr.vdb.simulate: {{ .Values.vdb.simulate | quote }}
-  ndr.wildcard.bid: {{ .Values.ndr.wildcardBid | default "xxxxx" | quote }}
-  ndr.wikiUrl: {{ .Values.ndr.wikiUrl | default "https://wiki.ndr.mobi/wiki/ndr/view/Anwendungen/Easy%20Insert%202.0%20%20%E2%80%9EVulcano%20%E2%80%9C/" | quote }}
-  ndr.bidLookupUrl: {{ .Values.ndr.bidLookupUrl | default "https://webapps.ndr-net.de/BeitragsIdWebapp2/public/uebersichtView.xhtml" | quote }}
+  # VDB/NDR Configuration
+  # integrations.ndr.* takes precedence; ndr.*/vdb.* are kept for backwards compatibility
+  ndr.vdb.server: {{ coalesce .Values.integrations.ndr.vdbServer .Values.vdb.server "" | quote }}
+  ndr.vdb.simulate: {{ coalesce .Values.integrations.ndr.vdbSimulate .Values.vdb.simulate "true" | quote }}
+  ndr.vdb.username: {{ .Values.integrations.ndr.vdbUsername | default "" | quote }}
+  ndr.vdb.password: {{ .Values.integrations.ndr.vdbPassword | default "" | quote }}
+  ndr.wildcard.bid: {{ coalesce .Values.integrations.ndr.wildcardBid .Values.ndr.wildcardBid "xxxxx" | quote }}
+  ndr.wikiUrl: {{ coalesce .Values.integrations.ndr.wikiUrl .Values.ndr.wikiUrl "https://wiki.ndr.mobi/wiki/ndr/view/Anwendungen/Easy%20Insert%202.0%20%20%E2%80%9EVulcano%20%E2%80%9C/" | quote }}
+  ndr.bidLookupUrl: {{ coalesce .Values.integrations.ndr.bidLookupUrl .Values.ndr.bidLookupUrl "https://webapps.ndr-net.de/BeitragsIdWebapp2/public/uebersichtView.xhtml" | quote }}
 
   # Octopus Configuration
-  {{- if .Values.octopus.enabled }}
-  octopus.api: {{ .Values.octopus.api | quote }}
-  octopus.password: {{ .Values.octopus.password | quote }}
-  octopus.startClient: {{ .Values.octopus.startClient | quote }}
-  octopus.username: {{ .Values.octopus.username | quote }}
-  octopus.client.delayInMS: {{ .Values.octopus.client.delayInMS | quote }}
+  # integrations.octopus.* takes precedence; octopus.* is kept for backwards compatibility
+  {{- if or .Values.integrations.octopus.enabled .Values.octopus.enabled }}
+  octopus.api: {{ coalesce .Values.integrations.octopus.api .Values.octopus.api "" | quote }}
+  octopus.password: {{ coalesce .Values.integrations.octopus.password .Values.octopus.password "" | quote }}
+  octopus.startClient: {{ coalesce .Values.integrations.octopus.startClient .Values.octopus.startClient "false" | quote }}
+  octopus.username: {{ coalesce .Values.integrations.octopus.username .Values.octopus.username "" | quote }}
+  octopus.client.delayInMS: {{ coalesce .Values.integrations.octopus.clientDelayInMs .Values.octopus.client.delayInMS "1000" | quote }}
   {{- end }}
 
   # Adobe Libraries Configuration
-  {{- if .Values.adobe.enabled }}
-  adobe.libraries.api.client.token: {{ .Values.adobe.clientToken | quote }}
-  adobe.libraries.api.clientId: {{ .Values.adobe.clientId | quote }}
-  adobe.libraries.api.secret: {{ .Values.adobe.secret | quote }}
-  adobe.libraries.scan: {{ .Values.adobe.scan | quote }}
-  adobe.libraries.dump.filepath: {{ .Values.adobe.dumpFilepath | quote }}
-  adobe.libraries.api.key: {{ .Values.adobe.apiKey | default "CCHomeWeb1" | quote }}
-  adobe.libraries.libraries.ignore: {{ .Values.adobe.librariesIgnore | default "\"Library to Ignore\"" | quote }}
+  # integrations.adobe.* takes precedence; adobe.* is kept for backwards compatibility
+  {{- if or .Values.integrations.adobe.enabled .Values.adobe.enabled }}
+  adobe.libraries.api.client.token: {{ coalesce .Values.integrations.adobe.clientToken .Values.adobe.clientToken "" | quote }}
+  adobe.libraries.api.clientId: {{ coalesce .Values.integrations.adobe.clientId .Values.adobe.clientId "" | quote }}
+  adobe.libraries.api.secret: {{ coalesce .Values.integrations.adobe.secret .Values.adobe.secret "" | quote }}
+  adobe.libraries.scan: {{ coalesce .Values.integrations.adobe.scan .Values.adobe.scan "false" | quote }}
+  adobe.libraries.dump.filepath: {{ coalesce .Values.integrations.adobe.dumpFilepath .Values.adobe.dumpFilepath "" | quote }}
+  adobe.libraries.api.key: {{ coalesce .Values.integrations.adobe.apiKey .Values.adobe.apiKey "CCHomeWeb1" | quote }}
+  adobe.libraries.libraries.ignore: {{ coalesce .Values.integrations.adobe.librariesIgnore .Values.adobe.librariesIgnore "\"Library to Ignore\"" | quote }}
   {{- end }}
 
   # Authentication Configuration
