@@ -30,7 +30,9 @@ spec:
       
       {{- if .Values.imagePullSecrets.enabled }}
       imagePullSecrets:
-        - name: docker-io
+        {{- range .Values.imagePullSecrets.secrets }}
+        - name: {{ .name }}
+        {{- end }}
       {{- end }}
 
       containers:
