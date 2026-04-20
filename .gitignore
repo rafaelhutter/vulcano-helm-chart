@@ -1,3 +1,4 @@
 index.yaml
 deployments/
 deploy-*.sh
+check-values.sh
