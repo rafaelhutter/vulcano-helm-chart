@@ -1,0 +1,73 @@
+name: Release Helm Chart
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history needed for release notes
+
+      - name: Install Helm
+        run: curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+      - name: Helm dependencies
+        run: helm dependency update
+
+      - name: Package chart
+        run: helm package .
+
+      - name: Get previous tag
+        id: prev_tag
+        run: |
+          PREV=$(git tag --sort=-version:refname | grep -E '^v' | sed -n '2p')
+          echo "prev=${PREV}" >> "$GITHUB_OUTPUT"
+
+      - name: Build release notes from commits
+        id: notes
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          PREV="${{ steps.prev_tag.outputs.prev }}"
+
+          if [ -n "$PREV" ]; then
+            RANGE="${PREV}..${TAG}"
+          else
+            RANGE="${TAG}"
+          fi
+
+          NOTES=$(git log "$RANGE" --pretty=format:"- %s (%h)" --no-merges)
+
+          # Group by conventional commit prefix
+          FEATURES=$(echo "$NOTES" | grep -E '^- feat' || true)
+          FIXES=$(echo "$NOTES"    | grep -E '^- fix'  || true)
+          OTHER=$(echo "$NOTES"    | grep -vE '^- feat|^- fix' || true)
+
+          BODY=""
+          [ -n "$FEATURES" ] && BODY="${BODY}## ✨ Features\n${FEATURES}\n\n"
+          [ -n "$FIXES"    ] && BODY="${BODY}## 🐛 Bug Fixes\n${FIXES}\n\n"
+          [ -n "$OTHER"    ] && BODY="${BODY}## 🔧 Other Changes\n${OTHER}\n\n"
+
+          [ -z "$BODY" ] && BODY="No changes recorded."
+
+          # Write to file to preserve newlines
+          printf "%b" "$BODY" > /tmp/release_notes.md
+          echo "notes_file=/tmp/release_notes.md" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          CHART_PKG=$(ls vulcano-*.tgz)
+          gh release create "$TAG" \
+            --title "Release ${TAG}" \
+            --notes-file "${{ steps.notes.outputs.notes_file }}" \
+            "$CHART_PKG"
