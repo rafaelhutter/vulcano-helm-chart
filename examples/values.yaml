@@ -207,9 +207,12 @@ rabbitmq:
     password: "CHANGE_ME" # <- REQUIRED: use a strong password
     # -- Alternative: reference an existing Kubernetes Secret instead of providing credentials here.
     # When set, password and erlangCookie above are ignored and no rabbitmq-credentials Secret is created.
+    # IMPORTANT: existingPasswordKey and existingErlangCookieKey must exactly match the key names
+    # inside the external Secret – they must also match the secretKeyName entries in extraObjects
+    # (e.g. Bitwarden). A mismatch causes: "couldn't find key <key> in Secret <name>"
     # existingSecret: "bw-rabbitmq-secrets"
-    # existingPasswordKey: "bw-rabbitmq-password"       # key inside existingSecret
-    # existingErlangCookieKey: "bw-rabbitmq-erlang-cookie"  # key inside existingSecret
+    # existingPasswordKey: "password"          # must match secretKeyName in extraObjects
+    # existingErlangCookieKey: "erlang-cookie" # must match secretKeyName in extraObjects
   service:
     type: ClusterIP
   persistence:

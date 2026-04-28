@@ -367,7 +367,7 @@ rabbitmq:
     # -- Key inside existingSecret that holds the RabbitMQ password
     existingPasswordKey: "rabbitmq-password"
     # -- Key inside existingSecret that holds the Erlang cookie
-    existingErlangCookieKey: "rabbitmq-erlang-cookie"
+    existingErlangCookieKey: "erlang-cookie"
 
   service:
     # -- RabbitMQ service type (ClusterIP, NodePort, LoadBalancer)
