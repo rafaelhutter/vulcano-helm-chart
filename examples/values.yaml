@@ -4,6 +4,11 @@
 #  then run install.sh to deploy.
 # ============================================================
 
+# -- Override the chart name (defaults to chart name)
+# nameOverride: ""
+# -- Override the full release name (defaults to release name + chart name)
+# fullnameOverride: ""
+
 # -----------------------------------------------------------
 # 1. GLOBAL CONFIGURATION
 # -----------------------------------------------------------
@@ -19,6 +24,14 @@ images:
     repository: "moovit/vulcano"
     tag: "1.9.13"
     pullPolicy: "IfNotPresent"
+  # filetransfer:
+  #   repository: "moovit/vulcano-filetransfer"
+  #   tag: "0.0.10"
+  #   pullPolicy: "IfNotPresent"
+  # dflconnector:
+  #   repository: "moovit/vulcano-dfl-connector"
+  #   tag: "0.2.20"
+  #   pullPolicy: "IfNotPresent"
 
 imagePullSecrets:
   enabled: true
@@ -125,6 +138,14 @@ vulcano:
   # searchProjectOnPageOpen: "true" # auto-load projects on main page open
   # showAllBins: "false"            # show all bins or only bins with content
   # useCustomFileName: "false"      # allow users to specify custom filenames
+  # webconfig:
+  #   disable: "false"              # disable the web-based configuration interface
+  # projects:
+  #   sortBy: "NAME"                # sorting criteria for project lists (NAME, CREATED, UPDATED)
+  # home:
+  #   base: "/home"                 # base path for user home directories
+  # media:
+  #   dockerHighresPath: ""         # internal Docker path override for high-resolution media
 
 # -----------------------------------------------------------
 # 4. AUTHENTICATION
@@ -268,7 +289,44 @@ housekeeping:
   maxAge: "14" # max age in days before automatic cleanup
 
 # -----------------------------------------------------------
-# 14. INTEGRATIONS (all optional - uncomment if needed)
+# 14. FILETRANSFER (optional - uncomment to enable)
+# -----------------------------------------------------------
+# filetransfer:
+#   enabled: false
+#   port: 8999
+#   resources:
+#     limits:
+#       cpu: "500m"
+#       memory: "512Mi"
+#     requests:
+#       cpu: "100m"
+#       memory: "256Mi"
+#   properties:
+#     transfer.type: "ftp"           # ftp | sftp | zdf
+#     transfer.destination: "/data/filetransfer"
+#     transfer.logApiRequests: "false"
+#     vulcano.baseUrl: "http://vulcano:8889"
+
+# -----------------------------------------------------------
+# 15. DFL-CONNECTOR (optional - uncomment to enable)
+# -----------------------------------------------------------
+# dflconnector:
+#   enabled: false
+#   port: 8080
+#   resources:
+#     limits:
+#       cpu: "500m"
+#       memory: "512Mi"
+#     requests:
+#       cpu: "100m"
+#       memory: "256Mi"
+#   properties:
+#     vulcano.dfl.competitionId: ""  # e.g. DFL-COM-000001
+#     vulcano.dfl.seasonId: ""       # e.g. DFL-SEA-0001K9
+#     vulcano.dfl.services: ""
+
+# -----------------------------------------------------------
+# 16. INTEGRATIONS (all optional - uncomment if needed)
 # -----------------------------------------------------------
 
 # -- Helmut4 integration
@@ -332,6 +390,21 @@ housekeeping:
 #   simulate: "true"
 
 # -----------------------------------------------------------
+# PROJECT SETTINGS (optional)
+# -----------------------------------------------------------
+# project:
+#   sendToUrls: ""                  # URLs to send project data to external systems
+#   delete:
+#     ownerOnly: "true"             # only allow project deletion by the owner
+
+# -----------------------------------------------------------
+# DATA FEED MAPPING (optional)
+# -----------------------------------------------------------
+# dataFeedMapping:
+#   skipUpdates: "false"            # skip asset creation for updates from datafeed
+#   ignoreDelete: "false"           # ignore delete messages from datafeed
+
+# -----------------------------------------------------------
 # EXTRA OBJECTS (optional)
 # -----------------------------------------------------------
 # Deploy arbitrary Kubernetes objects alongside this chart.
@@ -393,9 +466,6 @@ securityContext:
   runAsNonRoot: true
   runAsUser: 1001
   fsGroup: 1001
-
-podSecurityPolicy:
-  enabled: false
 
 # -----------------------------------------------------------
 # NETWORK (optional)
