@@ -324,7 +324,7 @@
       "properties": {
         "pathMapRenderNode": { "type": "string" },
         "pathMapServer": { "type": "string" },
-        "customCertificates": { "type": "string" },
+        "customCertificatesSecret": { "type": "string", "description": "Name of a Kubernetes Secret whose keys are mounted as files into /etc/certs" },
         "templates": { "type": "string" },
         "templatesClient": { "type": "string" },
         "media": {

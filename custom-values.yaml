@@ -187,7 +187,7 @@ logging:
 folders:
   pathMapRenderNode: "Z:"
   pathMapServer: "/data"
-  customCertificates: "/etc/certs"
+  customCertificatesSecret: "" # name of a K8s Secret – each key is mounted as a file into /etc/certs
   templates: "/data/templates"
   media:
     folder: "/data/highres"

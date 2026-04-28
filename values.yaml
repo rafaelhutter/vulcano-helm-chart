@@ -510,6 +510,10 @@ folders:
   pathMapRenderNode: "Z:"
   # -- Server-side path mapping configuration for shared storage access
   pathMapServer: "/data"
+  # -- Name of a Kubernetes Secret whose keys are mounted as certificate files into /etc/certs inside the Vulcano pod.
+  # Each key in the Secret becomes a file at /etc/certs/<key>.
+  # Leave empty to disable the certificate mount.
+  customCertificatesSecret: ""
   # -- Root directory path containing all After Effects templates and project files
   templates: "/data/templates"
   media:
