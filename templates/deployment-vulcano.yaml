@@ -127,7 +127,7 @@ spec:
                 secretKeyRef:
                   {{- if .Values.rabbitmq.auth.existingSecret }}
                   name: {{ .Values.rabbitmq.auth.existingSecret }}
-                  key: {{ .Values.rabbitmq.auth.existingPasswordKey | default "rabbitmq-password" }}
+                  key: {{ .Values.rabbitmq.auth.existingPasswordKey | default "password" }}
                   {{- else }}
                   name: rabbitmq-credentials
                   key: password
