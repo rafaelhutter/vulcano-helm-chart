@@ -233,6 +233,64 @@ spec:
                   name: vulcano-config
                   key: spring.servlet.multipart.max-request-size
 
+            # Integration Secrets
+            - name: vulcano.data.helmut.clientSecret
+              valueFrom:
+                secretKeyRef:
+                  {{- if .Values.integrations.helmut.existingSecret }}
+                  name: {{ .Values.integrations.helmut.existingSecret }}
+                  key: {{ .Values.integrations.helmut.existingPasswordKey | default "helmut-client-secret" }}
+                  {{- else }}
+                  name: helmut-credentials
+                  key: helmut-client-secret
+                  {{- end }}
+            - name: ndr.vdb.password
+              valueFrom:
+                secretKeyRef:
+                  {{- if .Values.integrations.ndr.existingSecret }}
+                  name: {{ .Values.integrations.ndr.existingSecret }}
+                  key: {{ .Values.integrations.ndr.existingPasswordKey | default "ndr-vdb-password" }}
+                  {{- else }}
+                  name: ndr-credentials
+                  key: ndr-vdb-password
+                  {{- end }}
+            {{- if or .Values.integrations.vidispine.baseUrl .Values.vidispine.baseUrl }}
+            - name: vulcano.vidispine.clientSecret
+              valueFrom:
+                secretKeyRef:
+                  {{- if .Values.integrations.vidispine.existingSecret }}
+                  name: {{ .Values.integrations.vidispine.existingSecret }}
+                  key: {{ .Values.integrations.vidispine.existingPasswordKey | default "vidispine-client-secret" }}
+                  {{- else }}
+                  name: vidispine-credentials
+                  key: vidispine-client-secret
+                  {{- end }}
+            {{- end }}
+            {{- if .Values.integrations.octopus.enabled }}
+            - name: octopus.password
+              valueFrom:
+                secretKeyRef:
+                  {{- if .Values.integrations.octopus.existingSecret }}
+                  name: {{ .Values.integrations.octopus.existingSecret }}
+                  key: {{ .Values.integrations.octopus.existingPasswordKey | default "octopus-password" }}
+                  {{- else }}
+                  name: octopus-credentials
+                  key: octopus-password
+                  {{- end }}
+            {{- end }}
+            {{- if eq .Values.auth.mode "KEYCLOAK" }}
+            - name: auth.keycloak.clientSecret
+              valueFrom:
+                secretKeyRef:
+                  {{- if .Values.auth.keycloak.existingSecret }}
+                  name: {{ .Values.auth.keycloak.existingSecret }}
+                  key: {{ .Values.auth.keycloak.existingPasswordKey | default "keycloak-client-secret" }}
+                  {{- else }}
+                  name: keycloak-credentials
+                  key: keycloak-client-secret
+                  {{- end }}
+            {{- end }}
+
           envFrom:
             # Load all configuration from ConfigMap as env vars
             - configMapRef:

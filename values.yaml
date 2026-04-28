@@ -576,6 +576,10 @@ integrations:
     clientId: ""
     # -- OAuth client secret for secure Helmut4 API authentication
     clientSecret: ""
+    # -- Name of an existing K8s Secret containing the Helmut4 client secret (when set, clientSecret is ignored)
+    existingSecret: ""
+    # -- Key inside existingSecret that holds the client secret
+    existingPasswordKey: "helmut-client-secret"
     # -- Base breadcrumb path for Helmut4 Cosmo workspace navigation
     cosmoBaseBreadcrumb: ""
     # -- Destination path mapping for Helmut4 Cosmo integration
@@ -594,6 +598,10 @@ integrations:
     bidLookupUrl: ""
     # -- Password for authenticating with the NDR VDB system
     vdbPassword: ""
+    # -- Name of an existing K8s Secret containing the NDR VDB password (when set, vdbPassword is ignored)
+    existingSecret: ""
+    # -- Key inside existingSecret that holds the VDB password
+    existingPasswordKey: "ndr-vdb-password"
     # -- Server hostname or URL for the NDR VDB system
     vdbServer: ""
     # -- Enable simulation mode for VDB operations without making actual network calls
@@ -614,6 +622,10 @@ integrations:
     clientDelayInMs: "5000"
     # -- Password for authenticating with the Octopus newsroom system
     password: ""
+    # -- Name of an existing K8s Secret containing the Octopus password (when set, password is ignored)
+    existingSecret: ""
+    # -- Key inside existingSecret that holds the password
+    existingPasswordKey: "octopus-password"
     # -- Enable the Octopus client for receiving and processing MOS messages
     startClient: "false"
     # -- Username for authenticating with the Octopus newsroom system
@@ -628,6 +640,10 @@ integrations:
     clientId: ""
     # -- OAuth client secret for secure Vidispine API authentication
     clientSecret: ""
+    # -- Name of an existing K8s Secret containing the Vidispine client secret (when set, clientSecret is ignored)
+    existingSecret: ""
+    # -- Key inside existingSecret that holds the client secret
+    existingPasswordKey: "vidispine-client-secret"
     # -- Default location value to be pre-selected in the location selector
     defaultLocation: ""
     # -- URL for retrieving allowed values for the Location metadata field from Vidispine
@@ -777,6 +793,10 @@ auth:
     clientId:
     # -- Keycloak client secret
     clientSecret:
+    # -- Name of an existing K8s Secret containing the Keycloak client secret (when set, clientSecret is ignored)
+    existingSecret: ""
+    # -- Key inside existingSecret that holds the client secret
+    existingPasswordKey: "keycloak-client-secret"
   # -- Authentication secret key
   secret:
 

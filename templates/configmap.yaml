@@ -128,7 +128,6 @@ data:
   vulcano.data.helmut.logRequest: {{ coalesce .Values.integrations.helmut.logRequest .Values.helmut.logRequest "false" | quote }}
   vulcano.data.helmut.apitoken: {{ coalesce .Values.integrations.helmut.apiToken .Values.helmut.apiToken "" | quote }}
   vulcano.data.helmut.clientId: {{ coalesce .Values.integrations.helmut.clientId .Values.helmut.clientId "" | quote }}
-  vulcano.data.helmut.clientSecret: {{ coalesce .Values.integrations.helmut.clientSecret .Values.helmut.clientSecret "" | quote }}
   vulcano.data.helmut.pageSize: {{ coalesce .Values.integrations.helmut.pageSize .Values.helmut.pageSize "50" | quote }}
   vulcano.data.helmut.cosmo.basebreadcrumb: {{ coalesce .Values.integrations.helmut.cosmoBaseBreadcrumb .Values.helmut.cosmo.baseBreadcrumb "" | quote }}
   vulcano.data.helmut.cosmo.mappingDest: {{ coalesce .Values.integrations.helmut.cosmoMappingDest .Values.helmut.cosmo.mappingDest "" | quote }}
@@ -144,7 +143,6 @@ data:
   vulcano.vidispine.workflow.mogrt: {{ coalesce .Values.integrations.vidispine.workflowMogrt .Values.vidispine.workflowMogrt "" | quote }}
   vulcano.vidispine.workflowVersion.mogrt: {{ coalesce .Values.integrations.vidispine.workflowVersionMogrt .Values.vidispine.workflowVersionMogrt "" | quote }}
   vulcano.vidispine.clientId: {{ coalesce .Values.integrations.vidispine.clientId .Values.vidispine.clientId "" | quote }}
-  vulcano.vidispine.clientSecret: {{ coalesce .Values.integrations.vidispine.clientSecret .Values.vidispine.clientSecret "" | quote }}
   vulcano.vidispine.storage: {{ coalesce .Values.integrations.vidispine.storage .Values.vidispine.storage "" | quote }}
   vulcano.vidispine.locationValuesUrl: {{ coalesce .Values.integrations.vidispine.locationValuesUrl .Values.vidispine.locationValuesUrl "" | quote }}
   vulcano.vidispine.defaultLocation: {{ coalesce .Values.integrations.vidispine.defaultLocation .Values.vidispine.defaultLocation "" | quote }}
@@ -154,7 +152,6 @@ data:
   ndr.vdb.server: {{ coalesce .Values.integrations.ndr.vdbServer .Values.vdb.server "" | quote }}
   ndr.vdb.simulate: {{ coalesce .Values.integrations.ndr.vdbSimulate .Values.vdb.simulate "true" | quote }}
   ndr.vdb.username: {{ .Values.integrations.ndr.vdbUsername | default "" | quote }}
-  ndr.vdb.password: {{ .Values.integrations.ndr.vdbPassword | default "" | quote }}
   ndr.wildcard.bid: {{ coalesce .Values.integrations.ndr.wildcardBid .Values.ndr.wildcardBid "xxxxx" | quote }}
   ndr.wikiUrl: {{ coalesce .Values.integrations.ndr.wikiUrl .Values.ndr.wikiUrl "https://wiki.ndr.mobi/wiki/ndr/view/Anwendungen/Easy%20Insert%202.0%20%20%E2%80%9EVulcano%20%E2%80%9C/" | quote }}
   ndr.bidLookupUrl: {{ coalesce .Values.integrations.ndr.bidLookupUrl .Values.ndr.bidLookupUrl "https://webapps.ndr-net.de/BeitragsIdWebapp2/public/uebersichtView.xhtml" | quote }}
@@ -163,7 +160,6 @@ data:
   # integrations.octopus.* takes precedence; octopus.* is kept for backwards compatibility
   {{- if or .Values.integrations.octopus.enabled .Values.octopus.enabled }}
   octopus.api: {{ coalesce .Values.integrations.octopus.api .Values.octopus.api "" | quote }}
-  octopus.password: {{ coalesce .Values.integrations.octopus.password .Values.octopus.password "" | quote }}
   octopus.startClient: {{ coalesce .Values.integrations.octopus.startClient .Values.octopus.startClient "false" | quote }}
   octopus.username: {{ coalesce .Values.integrations.octopus.username .Values.octopus.username "" | quote }}
   octopus.client.delayInMS: {{ coalesce .Values.integrations.octopus.clientDelayInMs .Values.octopus.client.delayInMS "1000" | quote }}
@@ -201,7 +197,6 @@ data:
   auth.service_admin_password: {{ .Values.auth.serviceAdminPassword | default "6qmY$JCaJ@6^#4V" | quote }}
   auth.keycloak.authority: {{ .Values.auth.keycloak.authority | default "http://localhost:8080/auth/realms/moovit" | quote }}
   auth.keycloak.clientId: {{ .Values.auth.keycloak.clientId | default "vulcano" | quote }}
-  auth.keycloak.clientSecret: {{ .Values.auth.keycloak.clientSecret | default "2ZHQK6w6sIauHMnJVVZ1LX94tLb6aBtK" | quote }}
   auth.secret: {{ .Values.auth.secret | default "XKv%Y$gVugN6!6" | quote }}
   
   # RabbitMQ Queue Configuration
