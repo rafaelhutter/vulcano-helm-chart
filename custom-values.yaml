@@ -51,7 +51,8 @@ vulcano:
          proxy_set_header Connection "upgrade";
          proxy_cache_bypass $http_upgrade;
         }
-    host: "vulcano-k8s.moovit24.de"
+    hosts:
+      - "vulcano-k8s.moovit24.de"
     path: "/"
     tls:
       enabled: "true"

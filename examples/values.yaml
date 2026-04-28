@@ -43,7 +43,8 @@ vulcano:
   ingress:
     enabled: true
     className: nginx
-    host: "vulcano.example.com" # <- REQUIRED: same as global.domain
+    hosts:
+      - "vulcano.example.com" # <- REQUIRED: same as global.domain
     path: "/"
     tls:
       enabled: true

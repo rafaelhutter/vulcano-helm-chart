@@ -25,23 +25,27 @@ spec:
   {{- if .Values.vulcano.ingress.tls.enabled }}
   tls:
     - hosts:
-        - {{ .Values.vulcano.ingress.host }}
+        {{- range .Values.vulcano.ingress.hosts }}
+        - {{ . }}
+        {{- end }}
       {{- if eq .Values.vulcano.ingress.tls.source "letsencrypt" }}
-      secretName: {{ .Values.vulcano.ingress.host | replace "." "-" }}-tls
+      secretName: {{ first .Values.vulcano.ingress.hosts | replace "." "-" }}-tls
       {{- else if eq .Values.vulcano.ingress.tls.source "existing" }}
       secretName: {{ .Values.vulcano.ingress.tls.existing.secretName }}
       {{- end }}
   {{- end }}
 
   rules:
-    - host: {{ .Values.vulcano.ingress.host }}
+    {{- range .Values.vulcano.ingress.hosts }}
+    - host: {{ . }}
       http:
         paths:
-          - path: {{ .Values.vulcano.ingress.path }}
+          - path: {{ $.Values.vulcano.ingress.path }}
             pathType: Prefix
             backend:
               service:
                 name: vulcano
                 port:
-                  number: {{ .Values.vulcano.service.port }}
+                  number: {{ $.Values.vulcano.service.port }}
+    {{- end }}
 {{- end }}
