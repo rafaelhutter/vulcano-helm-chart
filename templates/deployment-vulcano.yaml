@@ -244,6 +244,11 @@ spec:
             - name: admin-users
               mountPath: /app/admin-users.txt
               subPath: admin-users.txt
+            {{- if .Values.folders.customCertificatesSecret }}
+            - name: custom-certificates
+              mountPath: /etc/certs
+              readOnly: true
+            {{- end }}
 
       volumes:
         - name: data
@@ -255,6 +260,11 @@ spec:
             items:
               - key: admin-users.txt
                 path: admin-users.txt
+        {{- if .Values.folders.customCertificatesSecret }}
+        - name: custom-certificates
+          secret:
+            secretName: {{ .Values.folders.customCertificatesSecret }}
+        {{- end }}
 
       {{- if .Values.nodeSelector }}
       nodeSelector:

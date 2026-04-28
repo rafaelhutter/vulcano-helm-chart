@@ -146,7 +146,8 @@ smbCsi:
 folders:
   pathMapRenderNode: "Z:"
   pathMapServer: "/data"
-  customCertificates: "/etc/certs"
+  # -- Name of a K8s Secret whose keys are mounted as certificate files into /etc/certs
+  customCertificatesSecret: ""
   templates: "/data/templates"
   media:
     folder: "/data/highres"

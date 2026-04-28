@@ -50,7 +50,7 @@ data:
   # Folder Configuration
   vulcano.pathmap.rendernode: {{ .Values.folders.pathMapRenderNode | quote }}
   vulcano.pathmap.server: {{ .Values.folders.pathMapServer | quote }}
-  vulcano.customCertficates: {{ .Values.folders.customCertificates | quote }}
+  vulcano.customCertficates: "/etc/certs"
   {{- if .Values.folders.templatesClient }}
   vulcano.folder.templates.client: {{ .Values.folders.templatesClient | quote }}
   {{- end }}
