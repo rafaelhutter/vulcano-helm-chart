@@ -212,7 +212,9 @@
           "properties": {
             "authority": { "type": ["string", "null"] },
             "clientId": { "type": ["string", "null"] },
-            "clientSecret": { "type": ["string", "null"] }
+            "clientSecret": { "type": ["string", "null"] },
+            "existingSecret": { "type": "string" },
+            "existingPasswordKey": { "type": "string" }
           }
         },
         "serviceAdminPassword": { "type": ["string", "null"] },
@@ -445,10 +447,34 @@
     "integrations": {
       "type": "object",
       "properties": {
-        "helmut": { "type": "object" },
-        "ndr": { "type": "object" },
-        "octopus": { "type": "object" },
-        "vidispine": { "type": "object" },
+        "helmut": {
+          "type": "object",
+          "properties": {
+            "existingSecret": { "type": "string" },
+            "existingPasswordKey": { "type": "string" }
+          }
+        },
+        "ndr": {
+          "type": "object",
+          "properties": {
+            "existingSecret": { "type": "string" },
+            "existingPasswordKey": { "type": "string" }
+          }
+        },
+        "octopus": {
+          "type": "object",
+          "properties": {
+            "existingSecret": { "type": "string" },
+            "existingPasswordKey": { "type": "string" }
+          }
+        },
+        "vidispine": {
+          "type": "object",
+          "properties": {
+            "existingSecret": { "type": "string" },
+            "existingPasswordKey": { "type": "string" }
+          }
+        },
         "adobe": { "type": "object" }
       }
     },
