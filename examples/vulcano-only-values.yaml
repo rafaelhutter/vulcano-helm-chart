@@ -93,7 +93,7 @@ mongodb:
 
   # Credentials must match what was set in shared-services-values.yaml
   auth:
-    rootUser: "admin"
+    rootUsername: "admin"
     rootPassword: "CHANGE_ME" # <- must match shared-services-values.yaml
 
   replicaSet:

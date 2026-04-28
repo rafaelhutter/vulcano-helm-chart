@@ -176,21 +176,19 @@ adminUsers: |
 mongodb:
   enabled: true
   fullnameOverride: "mongodb"
-  architecture: "replicaset"
   replicaCount: 3 # set to 1 for single-node / dev environments
   auth:
-    rootUser: "admin"
+    rootUsername: "admin"
     rootPassword: "CHANGE_ME" # <- REQUIRED: use a strong password
     # -- Alternative: reference an existing Kubernetes Secret instead of providing credentials here.
     # When set, rootPassword above is ignored and no mongodb-credentials Secret is created by this chart.
     # existingSecret: "bw-mongodb-secrets"
-    # existingPasswordKey: "mongodb-root-password"  # key inside existingSecret
-    # existingUsernameKey: ""                        # key for username (optional; rootUser is used if omitted)
+    # existingSecretPasswordKey: "mongodb-root-password"  # key inside existingSecret (chart default)
   persistence:
     enabled: true
     size: "20Gi"
     storageClassName: "" # set if required (e.g. "local-path")
-    resourcePolicy: "keep"
+
   metrics:
     enabled: false
 
