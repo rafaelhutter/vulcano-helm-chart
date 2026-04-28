@@ -104,14 +104,14 @@ mongodb:
     key: "Yml0dGUtY2hhbmdlLXRoaXMtaW4tcHJvZHVjdGlvbi0xMjM0NTY3ODk=" # Base64 encoded key
 
   auth:
-    rootUser: "admin"
+    rootUsername: "admin"
     rootPassword: "bitte" # CHANGE THIS IN PRODUCTION!
 
   persistence:
     enabled: true
     size: "1Gi"
     storageClassName: ""
-    resourcePolicy: "keep"
+
 
   metrics:
     enabled: false

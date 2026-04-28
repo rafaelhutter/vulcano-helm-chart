@@ -232,16 +232,14 @@
         "externalHost": { "type": "string" },
         "fullnameOverride": { "type": "string" },
         "database": { "type": "string" },
-        "architecture": { "type": "string", "enum": ["standalone", "replicaset"] },
         "replicaCount": { "type": "integer", "minimum": 1 },
         "auth": {
           "type": "object",
           "properties": {
-            "rootUser": { "type": "string" },
+            "rootUsername": { "type": "string" },
             "rootPassword": { "type": "string" },
             "existingSecret": { "type": "string" },
-            "existingPasswordKey": { "type": "string" },
-            "existingUsernameKey": { "type": "string" }
+            "existingSecretPasswordKey": { "type": "string" }
           }
         },
         "persistence": {
@@ -249,8 +247,7 @@
           "properties": {
             "enabled": { "type": "boolean" },
             "size": { "type": "string" },
-            "storageClassName": { "type": "string" },
-            "resourcePolicy": { "type": "string" }
+            "storageClassName": { "type": "string" }
           }
         },
         "resources": { "$ref": "#/$defs/resourceRequirements" },

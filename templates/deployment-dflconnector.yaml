@@ -65,24 +65,19 @@ spec:
               value: "admin"
             {{- if or .Values.mongodb.enabled .Values.mongodb.externalHost }}
             - name: spring.data.mongodb.username
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.mongodb.auth.existingSecret }}
-                  name: {{ .Values.mongodb.auth.existingSecret }}
-                  key: {{ .Values.mongodb.auth.existingUsernameKey | default "username" }}
-                  {{- else }}
-                  name: mongodb-credentials
-                  key: username
-                  {{- end }}
+              value: {{ .Values.mongodb.auth.rootUsername | default "root" | quote }}
             - name: spring.data.mongodb.password
               valueFrom:
                 secretKeyRef:
                   {{- if .Values.mongodb.auth.existingSecret }}
                   name: {{ .Values.mongodb.auth.existingSecret }}
-                  key: {{ .Values.mongodb.auth.existingPasswordKey | default "mongodb-root-password" }}
+                  key: {{ .Values.mongodb.auth.existingSecretPasswordKey | default "mongodb-root-password" }}
+                  {{- else if .Values.mongodb.enabled }}
+                  name: {{ .Values.mongodb.fullnameOverride | default "mongodb" }}
+                  key: mongodb-root-password
                   {{- else }}
                   name: mongodb-credentials
-                  key: password
+                  key: mongodb-root-password
                   {{- end }}
             {{- end }}
 

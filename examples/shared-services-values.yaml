@@ -41,21 +41,20 @@ serviceAccount:
 mongodb:
   enabled: true
   fullnameOverride: "mongodb"
-  architecture: "replicaset"
   replicaCount: 3 # use 1 for dev / single-node clusters
 
   auth:
-    rootUser: "admin"
+    rootUsername: "admin"
     rootPassword: "CHANGE_ME" # <- REQUIRED: use a strong password
     # Alternative – reference an existing Secret (e.g. from Bitwarden / External Secrets):
     # existingSecret: "bw-mongodb-secrets"
-    # existingPasswordKey: "mongodb-root-password"
+    # existingSecretPasswordKey: "mongodb-root-password"
 
   persistence:
     enabled: true
     size: "20Gi"
     storageClassName: "" # set if required, e.g. "longhorn"
-    resourcePolicy: "keep"
+
 
   metrics:
     enabled: false

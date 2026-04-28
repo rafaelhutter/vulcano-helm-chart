@@ -294,30 +294,26 @@ mongodb:
   # Set to false when using an external MongoDB (e.g. deployed in vulcano-common).
   enabled: true
   # -- External MongoDB host. When set (and enabled=false), Vulcano connects to this host.
-  # Credentials from auth.rootUser / auth.rootPassword (or auth.existingSecret) are still used.
+  # Credentials from auth.rootUsername / auth.rootPassword (or auth.existingSecret) are still used.
   # Example: "mongodb-headless.vulcano-common.svc.cluster.local"
   externalHost: ""
   # -- Full name override for MongoDB resources
   fullnameOverride: "mongodb"
   # -- MongoDB database name used by Vulcano (defaults to 'vulcano' if not set)
   database: "vulcano"
-  # -- MongoDB architecture (standalone or replicaset)
-  architecture: "replicaset"
   # -- Number of MongoDB replicas
   replicaCount: 3
 
   auth:
     # -- MongoDB root username
-    rootUser: "root"
+    rootUsername: "root"
     # -- MongoDB root password (ignored when existingSecret is set)
     rootPassword: "bitte"
     # -- Name of an existing Kubernetes Secret containing MongoDB credentials.
     # When set, rootPassword is ignored and the chart will NOT create a mongodb-credentials secret.
     existingSecret: ""
-    # -- Key inside existingSecret that holds the root password
-    existingPasswordKey: "mongodb-root-password"
-    # -- Key inside existingSecret that holds the username (defaults to plain username from rootUser)
-    existingUsernameKey: ""
+    # -- Key inside existingSecret that holds the root password (chart default: "mongodb-root-password")
+    existingSecretPasswordKey: "mongodb-root-password"
 
   persistence:
     # -- Enable MongoDB persistence
@@ -326,8 +322,7 @@ mongodb:
     size: "50Gi"
     # -- Storage class name for MongoDB
     storageClassName: ""
-    # -- Resource policy for persistent volumes
-    resourcePolicy: "keep"
+
 
   resources:
     limits:
