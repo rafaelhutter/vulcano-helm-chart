@@ -391,7 +391,9 @@ rabbitmq:
     # -- Enable RabbitMQ metrics
     enabled: false
 
-  # -- Queue name for job updates
+  # -- Name of the RabbitMQ queue used as the return channel from render nodes back to the server.
+  # Only set this if you need to run multiple isolated Vulcano instances sharing the same RabbitMQ broker.
+  # Defaults to "vulcano-job-updates" when not set.
   jobUpdateQueue: "vulcano-job-updates"
 
 # RBAC Configuration
