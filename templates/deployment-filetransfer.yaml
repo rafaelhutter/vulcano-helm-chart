@@ -31,7 +31,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/credentials: {{ .Values.auth.serviceAdminPassword | default "" | sha256sum | quote }}
+        checksum/credentials: {{ include "vulcano.serviceAdminPassword" . | sha256sum | quote }}
         {{- if .Values.filetransfer.zdfTargets }}
         checksum/zdf-targets: {{ .Values.filetransfer.zdfTargets | toJson | sha256sum | quote }}
         {{- end }}
