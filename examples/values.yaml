@@ -29,7 +29,7 @@ images:
   #   tag: "0.0.10"
   #   pullPolicy: "IfNotPresent"
   # dflconnector:
-  #   repository: "moovit/vulcano-dfl-connector"
+  #   repository: "moovit/de.moovit.vulcano-dfl-connector"
   #   tag: "0.2.20"
   #   pullPolicy: "IfNotPresent"
 
