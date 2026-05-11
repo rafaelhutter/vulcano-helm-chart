@@ -255,6 +255,7 @@ dflconnector:
     logging.level.de.moovit.vulcanodflconnector: "INFO"
     # URL of the Vulcano backend – when running in the same namespace use the K8s service name
     vulcano.base.url: "http://vulcano:8889/"
+    # vulcano.base.service_admin_username is always "service_admin" – injected automatically by the template
     # vulcano.base.service_admin_password is injected automatically from auth.serviceAdminPassword – do not set here
     # Log all outgoing Vulcano HTTP requests for debugging
     vulcano.logRequests: "false"
