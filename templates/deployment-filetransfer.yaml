@@ -78,6 +78,11 @@ spec:
             - name: data
               mountPath: {{ .Values.vulcano.storage.mountPath }}
               readOnly: true
+            {{- range $mount := .Values.vulcano.storage.extraMounts }}
+            - name: {{ $mount.name }}
+              mountPath: {{ $mount.mountPath }}
+              readOnly: true
+            {{- end }}
             {{- if .Values.filetransfer.zdfTargets }}
             - name: zdf-targets
               mountPath: /zdf-targets.json
@@ -89,6 +94,12 @@ spec:
           persistentVolumeClaim:
             claimName: {{ .Values.vulcano.storage.existingClaim | default .Values.vulcano.storage.pvc }}
             readOnly: true
+        {{- range $mount := .Values.vulcano.storage.extraMounts }}
+        - name: {{ $mount.name }}
+          persistentVolumeClaim:
+            claimName: {{ $mount.existingClaim | default ($mount.pvc | default (printf "vulcano-%s" $mount.name)) }}
+            readOnly: true
+        {{- end }}
         {{- if .Values.filetransfer.zdfTargets }}
         - name: zdf-targets
           configMap:
