@@ -42,9 +42,6 @@ spec:
               value: >-
                 -Dlogging.file.path=/app/logs
                 -Dlogging.file.name=dflconnector.log
-                --add-exports java.base/sun.nio.ch=ALL-UNNAMED
-                --add-opens java.base/java.util=ALL-UNNAMED
-                --add-opens java.base/java.lang=ALL-UNNAMED
             {{- range $key, $val := .Values.dflconnector.properties }}
             - name: {{ $key }}
               value: {{ $val | quote }}
