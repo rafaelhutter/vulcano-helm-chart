@@ -1,6 +1,6 @@
 # vulcano
 
-![Version: 1.0.1](https://img.shields.io/badge/Version-1.0.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.9.13](https://img.shields.io/badge/AppVersion-1.9.13-informational?style=flat-square)
+![Version: 1.2.1](https://img.shields.io/badge/Version-1.2.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.9.13](https://img.shields.io/badge/AppVersion-1.9.13-informational?style=flat-square)
 
 Vulcano - Complete application deployment with MongoDB, RabbitMQ, and optional CSI driver
 
@@ -306,32 +306,91 @@ vulcano:
 
 > SMB-CSI provisioning (`smbCsi.enabled`) only applies to the primary PVC. For SMB-backed extras, provision the PV/PVC yourself (e.g. via `extraObjects`) and reference it with `existingClaim`.
 
+### Optional sidekick Deployments
+
+The chart can deploy two optional companion services in the same release as the Vulcano backend. Both are off by default — flip `<component>.enabled: true` to bring them up.
+
+#### `filetransfer`
+
+A separate deployment that ships rendered output to external destinations (FTP / SFTP / ZDF Upload Portal via TUS). It mounts `vulcano.storage` **read-only** and authenticates against the Vulcano API as the `service_admin` user (password is sourced from the shared `vulcano-credentials` Secret).
+
+```yaml
+filetransfer:
+  enabled: true
+  port: 8999
+  properties:
+    transfer.type: "ftp"                   # ftp | sftp | zdf
+    transfer.destination: "/data/transfer" # FTP/SFTP only — must be on a mounted path
+    transfer.logApiRequests: "false"
+
+  # ZDF mode only — declarative TUS targets.
+  # Each target name is referenced in the API call; inviteCode is per-target.
+  zdfTargets:
+    TARGET1:
+      inviteCode: ""   # sensitive – put in values.secret.yaml
+```
+
+If you use `vulcano.storage.extraMounts`, filetransfer automatically gets the same set of mounts read-only so its view of the filesystem matches Vulcano's.
+
+#### `dflconnector`
+
+Bridges the DFL (Deutsche Fußball Liga) data-feed websocket / REST API into Vulcano: subscribes to configured services, fetches initial fixtures, and posts updates back to Vulcano. Authenticates as `service_admin` (hardcoded username in the connector code; password from `vulcano-credentials`).
+
+```yaml
+dflconnector:
+  enabled: true
+  port: 8080
+  properties:
+    vulcano.base.url: "http://vulcano:8889/"
+    vulcano.dfl.competitionId: "DFL-COM-000001,DFL-COM-000002"
+    vulcano.dfl.seasonId: "DFL-SEA-0001K9"
+    vulcano.dfl.services: "DFL-05.01-Tabelle,DFL-02.01-Spielinformationen,..."
+    vulcano.dfl.websocket.clientId: "<assigned-by-dfl>"
+    vulcano.dfl.websocket.url: "wss://ws.distribution.production.datahub-sts.de/DeliveryPlatform/websocket/ServiceRegistration"
+    vulcano.logRequests: "false"           # flip to "true" to log every outgoing Vulcano API call
+```
+
+The connector requires Mongo (it uses its own DB). Override `vulcano.base.url` if Vulcano is reached via a different service name (e.g. when running in a non-namespaced setup).
+
+### Spring Boot MongoDB binding (legacy vs. new)
+
+Since chart **1.2.0** the MongoDB env vars are emitted under **both** key prefixes on every pod that talks to Mongo (vulcano, dflconnector):
+
+| Prefix | Used by |
+|---|---|
+| `spring.data.mongodb.*` | Spring Boot ≤ 3.3 |
+| `spring.mongodb.*`      | Spring Boot ≥ 3.4 (renamed binding) |
+
+You don't need to configure anything to get both — the chart's `vulcano.mongodb.env` template emits the full set automatically. This lets the chart work against apps before and after the Spring Boot upgrade without per-pod overrides.
+
 ## Values
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | adminUsers | string | `"admin1@domain.com\nadmin2@domain.com\n"` | List of email addresses for users with administrative privileges. One email per line. These users will have full system access including project deletion and user management. |
-| adobe.apiKey | string | `"CCHomeWeb1"` | Adobe API Key for accessing Adobe Creative Cloud services |
-| adobe.clientId | string | `""` | Adobe IMS Client ID for OAuth authentication flow |
-| adobe.clientToken | string | `""` | OAuth access token for Adobe Creative Cloud Libraries API authentication |
-| adobe.dumpFilepath | string | `""` | File path where a JSON dump of all available Adobe CC Libraries elements will be created |
-| adobe.enabled | bool | `false` | Enable Adobe Creative Cloud Libraries integration for syncing MOGRT templates |
-| adobe.librariesIgnore | string | `"\"Library to Ignore\""` | Comma-separated list of Adobe Creative Cloud Library names that should be excluded from synchronization |
-| adobe.scan | string | `"false"` | Enable automatic synchronization of Adobe Creative Cloud Libraries every 2 minutes |
-| adobe.secret | string | `""` | Adobe IMS Client Secret for OAuth authentication |
+| adobe.apiKey | string | `""` |  |
+| adobe.clientId | string | `""` |  |
+| adobe.clientToken | string | `""` |  |
+| adobe.dumpFilepath | string | `""` |  |
+| adobe.enabled | bool | `false` |  |
+| adobe.librariesIgnore | string | `""` |  |
+| adobe.scan | string | `""` |  |
+| adobe.secret | string | `""` |  |
 | affinity | object | `{}` | Affinity rules for pod scheduling |
 | auth.keycloak.authority | string | `nil` | Keycloak authority URL |
 | auth.keycloak.clientId | string | `nil` | Keycloak client ID |
 | auth.keycloak.clientSecret | string | `nil` | Keycloak client secret |
+| auth.keycloak.existingPasswordKey | string | `"keycloak-client-secret"` | Key inside existingSecret that holds the client secret |
+| auth.keycloak.existingSecret | string | `""` | Name of an existing K8s Secret containing the Keycloak client secret (when set, clientSecret is ignored) |
 | auth.microsoft.authority | string | `nil` | Microsoft Azure AD authority URL |
 | auth.microsoft.clientId | string | `nil` | Microsoft Azure AD client ID |
-| auth.mode | string | `"MICROSOFT"` | Authentication mode (MICROSOFT, KEYCLOAK, etc.) |
+| auth.mode | string | `"MICROSOFT"` | Authentication mode (MICROSOFT, KEYCLOAK, HELMUT, BID) |
 | auth.secret | string | `nil` | Authentication secret key |
 | auth.serviceAdminPassword | string | `nil` | Service admin password for authentication |
-| config.labels | object | `{"app":"vulcano","version":"1.9.13"}` | Labels for all resources |
 | dataFeedMapping.ignoreDelete | string | `"false"` | Ignore Delete Messages from Datafeed |
 | dataFeedMapping.skipUpdates | string | `"false"` | Skip Asset Creation for Updates from Datafeed |
-| extraObjects | list | `[]` | Extra Kubernetes objects to deploy alongside the chart. Supports Helm templating via `tpl`. Useful for External/Bitwarden Secrets, custom PVCs, StorageClasses, etc. See *Advanced Configuration* above. |
+| dflconnector | object | `{"enabled":false,"port":8080,"properties":{"logging.level.de.moovit.vulcanodflconnector":"INFO","logging.level.root":"INFO","logstash.enabled":"false","server.port":"8080","vulcano.base.url":"http://vulcano:8889/","vulcano.cache.db.expireAfterWriteMinutes":"15","vulcano.cache.db.maximumSize":"1000","vulcano.cache.http.expireAfterWriteMinutes":"1","vulcano.cache.http.maximumSize":"500","vulcano.dfl.competitionId":"","vulcano.dfl.listOfServicesUrl":"https://httpget.distribution.production.datahub-sts.de/DeliveryPlatform/REST/ListOfServices/{clientId}","vulcano.dfl.liveTableParameters":"","vulcano.dfl.pullOnceUrl":"https://httpget.distribution.production.datahub-sts.de/DeliveryPlatform/REST/PullOnce/{clientId}/{serviceId}/{parameterId}","vulcano.dfl.seasonId":"","vulcano.dfl.serviceInformationUrl":"https://httpget.distribution.production.datahub-sts.de/DeliveryPlatform/REST/ServiceInformation/{clientId}/{serviceId}","vulcano.dfl.services":"","vulcano.dfl.websocket.clientId":"","vulcano.dfl.websocket.clientName":"Vulcano","vulcano.dfl.websocket.connect-timeout":"30000","vulcano.dfl.websocket.max-message-size":"50MB","vulcano.dfl.websocket.message-timeout":"300000","vulcano.dfl.websocket.ping-interval-seconds":"10","vulcano.dfl.websocket.pong-timeout-millis":"20000","vulcano.dfl.websocket.url":"wss://ws.distribution.production.datahub-sts.de/DeliveryPlatform/websocket/ServiceRegistration","vulcano.logRequests":"false"},"resources":{"limits":{"cpu":"500m","memory":"512Mi"},"requests":{"cpu":"100m","memory":"256Mi"}}}` | ------------------------------------------------------------------------- |
+| extraObjects | list | `[]` | Extra Kubernetes objects to deploy alongside the chart. Useful for BitwardenSecrets, custom PVCs, StorageClasses, or any other resource. Supports templating via tpl – you can reference .Release.Name, .Values, etc. Example (Bitwarden Secrets Manager): extraObjects:   - apiVersion: k8s.bitwarden.com/v1     kind: BitwardenSecret     metadata:       name: rabbitmq       namespace: "{{ .Release.Namespace }}"     spec:       organizationId: "<org-id>"       secretName: bw-rabbitmq-secrets       map:         - bwSecretId: <uuid>           secretKeyName: "rabbitmq-password"         - bwSecretId: <uuid>           secretKeyName: "rabbitmq-erlang-cookie"       authToken:         secretName: bw-auth-token         secretKey: token |
 | features.afxCreateMogrt | string | `"true"` | Enable creation of MOGRT files during rendering |
 | features.afxRender | string | `"true"` | Enable After Effects rendering functionality |
 | features.afxRenderMassJobLimit | string | `"-1"` | Maximum number of assets that can be rendered simultaneously in mass rendering operations |
@@ -342,20 +401,19 @@ vulcano:
 | features.ignoreMogrt | string | `"false"` | Ignore MOGRT files during template scanning and processing |
 | features.logThirdPartyRequests | string | `"false"` | Enable detailed logging of all HTTP requests made to external APIs |
 | features.maxNameLength | string | `"200"` | Maximum character limit for asset names and file names |
+| filetransfer | object | `{"enabled":false,"name":"vulcano-transfer","port":8999,"properties":{"server.port":"8999","springdoc.api-docs.path":"/api-docs","springdoc.swagger-ui.path":"/docs","transfer.logApiRequests":"false","transfer.type":"","vulcano.baseUrl":"http://vulcano:8889"},"resources":{"limits":{"cpu":"500m","memory":"512Mi"},"requests":{"cpu":"100m","memory":"256Mi"}}}` | ------------------------------------------------------------------------- |
 | folderScanner.allowEmptyFolder | string | `"true"` | Allow creation and preservation of empty folders in the file system structure |
 | folderScanner.defaultBin | string | `"Templates"` | Default folder name used for organizing templates and assets when no specific bin is specified |
 | folderScanner.maxDepth | string | `"10"` | Maximum folder depth level for recursive scanning operations |
 | folderScanner.recreateMissingHighres | string | `"true"` | Automatically re-render missing high-resolution files when detected during system checks |
 | folderScanner.startD3 | string | `"false"` | Enable Delta Tre sports data integration |
 | folderScanner.startWatcher | string | `"true"` | Enable automatic file system monitoring to detect changes in template folders |
-| folders.customCertificates | string | `"/etc/certs"` | Enable support for custom SSL certificates |
+| folders.customCertificatesSecret | string | `""` | Name of a Kubernetes Secret whose keys are mounted as certificate files into /etc/certs inside the Vulcano pod. Each key in the Secret becomes a file at /etc/certs/<key>. Leave empty to disable the certificate mount. |
 | folders.media.clientFolder | string | `"/data/highres"` | Client-side path mapping for media files in path replacement operations |
 | folders.media.extension | string | `".mov"` | Comma-separated list of allowed media file extensions for processing |
 | folders.media.folder | string | `"/data/highres"` | Root directory path where generated high-resolution media files are stored |
-| folders.media.mediaExtension | string | `".mov"` | Comma-separated list of allowed media file extensions for processing |
 | folders.media.templatesFolder | string | `"/data/highres_templates"` | Directory path containing After Effects project templates and MOGRT files |
 | folders.output.deletedFolder | string | `"/highres_deleted"` | Folder path where deleted high-resolution rendered files are moved before permanent deletion |
-| folders.output.deletedhires | string | `"/highres_deleted"` | Folder path where deleted high-resolution rendered files are moved before permanent deletion |
 | folders.pathMapRenderNode | string | `"Z:"` | Path mapping configuration for render nodes in distributed rendering setups |
 | folders.pathMapServer | string | `"/data"` | Server-side path mapping configuration for shared storage access |
 | folders.proxy | string | `"/data/lowres"` | Directory path where low-resolution proxy files are stored |
@@ -364,29 +422,29 @@ vulcano:
 | folders.thumbnails | string | `"/data/thumbs"` | Directory path where thumbnail images are stored |
 | folderscanner.mediaFolder.recreateFolderStructure | string | `"true"` | Recreate the folder structure for media folders |
 | folderscanner.mediaFolder.templates.client | string | `"/Volumes/helmut_1/vulcano/highres_templates"` | Client-side path mapping for template media files. Used to replace server template paths with client-accessible paths in HiresApiDelegateImpl.mapHiresPath() for template folder access |
-| global | object | `{"domain":"vulcano.example.com","namespace":"vulcano-app"}` | Global configuration for the Vulcano deployment |
-| global.domain | string | `"vulcano.example.com"` | Domain name for ingress and services |
+| fullnameOverride | string | `""` | Override the full release name |
+| global | object | `{"namespace":"vulcano-app"}` | Global configuration for the Vulcano deployment |
 | global.namespace | string | `"vulcano-app"` | Kubernetes namespace for the deployment |
-| helmut.apiToken | string | `""` | Authentication token for Helmut4 media asset management system integration |
-| helmut.baseUrl | string | `nil` | Base URL of the Helmut4 server API (e.g., https://helmut.company.com/api) |
-| helmut.clientId | string | `""` | OAuth client identifier for Helmut4 API authentication |
-| helmut.clientSecret | string | `""` | OAuth client secret for secure Helmut4 API authentication |
-| helmut.cosmo.baseBreadcrumb | string | `""` | Base breadcrumb path for Helmut4 Cosmo workspace navigation. Defines the starting point for project and asset browsing |
-| helmut.cosmo.mappingDest | string | `""` | Destination path mapping for Helmut4 Cosmo integration. Maps Vulcano asset locations to Cosmo workspace structure |
-| helmut.cosmo.mappingSrc | string | `""` | Source path mapping for Helmut4 Cosmo integration. Maps Cosmo workspace paths to Vulcano internal structure |
-| helmut.cosmo.sync | string | `"false"` | Enable synchronization between Vulcano assets and Helmut4 Cosmo workspace. Keeps asset metadata and status in sync |
-| helmut.enabled | bool | `false` | Enable Helmut4 media asset management system integration |
-| helmut.logRequest | string | `"false"` | Enable detailed logging of HTTP requests made to Helmut4 API |
-| helmut.pageSize | string | `"50"` | Number of items per page when fetching data from Helmut4 API |
+| helmut | object | `{"apiToken":"","baseUrl":null,"clientId":"","clientSecret":"","cosmo":{"baseBreadcrumb":"","mappingDest":"","mappingSrc":"","sync":""},"logRequest":"","pageSize":""}` | ------------------------------------------------------------------------- |
 | housekeeping.enabled | string | `"false"` | Enable automatic cleanup and maintenance tasks |
 | housekeeping.maxAge | string | `"14"` | Maximum age in days for housekeeping items before they are automatically cleaned up |
 | imagePullSecrets | object | `{"enabled":true,"secrets":[{"name":"docker-io"}]}` | Image Pull Secrets configuration |
 | imagePullSecrets.enabled | bool | `true` | Enable image pull secrets |
-| images | object | `{"vulcano":{"pullPolicy":"IfNotPresent","repository":"moovit/vulcano","tag":"1.9.13"}}` | Docker Image Configuration |
+| images | object | `{"dflconnector":{"pullPolicy":"IfNotPresent","repository":"moovit/de.moovit.vulcano-dfl-connector","tag":"0.2.20"},"filetransfer":{"pullPolicy":"IfNotPresent","repository":"moovit/vulcano-filetransfer","tag":"0.0.10"},"vulcano":{"pullPolicy":"IfNotPresent","repository":"moovit/vulcano","tag":"1.9.13"}}` | Docker Image Configuration |
 | images.vulcano.pullPolicy | string | `"IfNotPresent"` | Image pull policy |
 | images.vulcano.repository | string | `"moovit/vulcano"` | Docker repository for Vulcano application |
 | images.vulcano.tag | string | `"1.9.13"` | Docker image tag |
-| integrations.helmut | object | `{"apiToken":"","baseUrl":"","clientId":"","clientSecret":"","cosmoBaseBreadcrumb":"","cosmoMappingDest":"","cosmoMappingSrc":"","cosmoSync":"false","logRequest":"false","pageSize":"50"}` | Authentication token for Helmut4 media asset management system integration |
+| integrations | object | `{"adobe":{"apiKey":"CCHomeWeb1","clientId":"","clientToken":"","dumpFilepath":"","enabled":false,"librariesIgnore":"\"Library to Ignore\"","scan":"false","secret":""},"helmut":{"apiToken":"","baseUrl":"","clientId":"","clientSecret":"","cosmoBaseBreadcrumb":"","cosmoMappingDest":"","cosmoMappingSrc":"","cosmoSync":"false","existingPasswordKey":"helmut-client-secret","existingSecret":"","logRequest":"false","pageSize":"50"},"ndr":{"bidLookupUrl":"","existingPasswordKey":"ndr-vdb-password","existingSecret":"","vdbPassword":"","vdbServer":"","vdbSimulate":"false","vdbUsername":"","wikiUrl":"","wildcardBid":""},"octopus":{"api":"","clientDelayInMs":"5000","enabled":false,"existingPasswordKey":"octopus-password","existingSecret":"","password":"","startClient":"false","username":""},"vidispine":{"baseUrl":"","baseUrlAuth":"","clientId":"","clientSecret":"","defaultLocation":"","existingPasswordKey":"vidispine-client-secret","existingSecret":"","locationValuesUrl":"","storage":"","workflow":"","workflowMogrt":"","workflowVersion":"","workflowVersionMogrt":""}}` | ------------------------------------------------------------------------- |
+| integrations.adobe | object | `{"apiKey":"CCHomeWeb1","clientId":"","clientToken":"","dumpFilepath":"","enabled":false,"librariesIgnore":"\"Library to Ignore\"","scan":"false","secret":""}` | Adobe Creative Cloud Libraries integration |
+| integrations.adobe.apiKey | string | `"CCHomeWeb1"` | Adobe API Key for accessing Adobe Creative Cloud services |
+| integrations.adobe.clientId | string | `""` | Adobe IMS Client ID for OAuth authentication flow |
+| integrations.adobe.clientToken | string | `""` | OAuth access token for Adobe Creative Cloud Libraries API authentication |
+| integrations.adobe.dumpFilepath | string | `""` | File path where a JSON dump of all available Adobe CC Libraries elements will be created |
+| integrations.adobe.enabled | bool | `false` | Enable Adobe Creative Cloud Libraries integration for syncing MOGRT templates |
+| integrations.adobe.librariesIgnore | string | `"\"Library to Ignore\""` | Comma-separated list of Adobe Creative Cloud Library names that should be excluded from synchronization |
+| integrations.adobe.scan | string | `"false"` | Enable automatic synchronization of Adobe Creative Cloud Libraries every 2 minutes |
+| integrations.adobe.secret | string | `""` | Adobe IMS Client Secret for OAuth authentication |
+| integrations.helmut | object | `{"apiToken":"","baseUrl":"","clientId":"","clientSecret":"","cosmoBaseBreadcrumb":"","cosmoMappingDest":"","cosmoMappingSrc":"","cosmoSync":"false","existingPasswordKey":"helmut-client-secret","existingSecret":"","logRequest":"false","pageSize":"50"}` | Authentication token for Helmut4 media asset management system integration |
 | integrations.helmut.apiToken | string | `""` | Authentication token for Helmut4 media asset management system integration |
 | integrations.helmut.baseUrl | string | `""` | Base URL of the Helmut4 server API (e.g., https://helmut.company.com/api) |
 | integrations.helmut.clientId | string | `""` | OAuth client identifier for Helmut4 API authentication |
@@ -395,28 +453,37 @@ vulcano:
 | integrations.helmut.cosmoMappingDest | string | `""` | Destination path mapping for Helmut4 Cosmo integration |
 | integrations.helmut.cosmoMappingSrc | string | `""` | Source path mapping for Helmut4 Cosmo integration |
 | integrations.helmut.cosmoSync | string | `"false"` | Enable synchronization between Vulcano assets and Helmut4 Cosmo workspace |
+| integrations.helmut.existingPasswordKey | string | `"helmut-client-secret"` | Key inside existingSecret that holds the client secret |
+| integrations.helmut.existingSecret | string | `""` | Name of an existing K8s Secret containing the Helmut4 client secret (when set, clientSecret is ignored) |
 | integrations.helmut.logRequest | string | `"false"` | Enable detailed logging of HTTP requests made to Helmut4 API |
 | integrations.helmut.pageSize | string | `"50"` | Number of items per page when fetching data from Helmut4 API |
-| integrations.ndr | object | `{"bidLookupUrl":"","vdbPassword":"","vdbServer":"","vdbSimulate":"false","vdbUsername":"","wikiUrl":"","wildcardBid":""}` | URL endpoint for looking up BID information in the NDR VDB system |
+| integrations.ndr | object | `{"bidLookupUrl":"","existingPasswordKey":"ndr-vdb-password","existingSecret":"","vdbPassword":"","vdbServer":"","vdbSimulate":"false","vdbUsername":"","wikiUrl":"","wildcardBid":""}` | URL endpoint for looking up BID information in the NDR VDB system |
 | integrations.ndr.bidLookupUrl | string | `""` | URL endpoint for looking up BID (Broadcast ID) information in the NDR VDB system |
+| integrations.ndr.existingPasswordKey | string | `"ndr-vdb-password"` | Key inside existingSecret that holds the VDB password |
+| integrations.ndr.existingSecret | string | `""` | Name of an existing K8s Secret containing the NDR VDB password (when set, vdbPassword is ignored) |
 | integrations.ndr.vdbPassword | string | `""` | Password for authenticating with the NDR VDB system |
 | integrations.ndr.vdbServer | string | `""` | Server hostname or URL for the NDR VDB system |
 | integrations.ndr.vdbSimulate | string | `"false"` | Enable simulation mode for VDB operations without making actual network calls |
 | integrations.ndr.vdbUsername | string | `""` | Username for authenticating with the NDR VDB system |
 | integrations.ndr.wikiUrl | string | `""` | URL to the NDR VDB documentation wiki |
 | integrations.ndr.wildcardBid | string | `""` | Wildcard BID pattern used for broadcast ID matching in the NDR VDB system |
-| integrations.octopus | object | `{"api":"","clientDelayInMs":"5000","password":"","startClient":"false","username":""}` | API endpoint URL for Octopus newsroom system integration |
+| integrations.octopus | object | `{"api":"","clientDelayInMs":"5000","enabled":false,"existingPasswordKey":"octopus-password","existingSecret":"","password":"","startClient":"false","username":""}` | API endpoint URL for Octopus newsroom system integration |
 | integrations.octopus.api | string | `""` | API endpoint URL for Octopus newsroom system integration |
 | integrations.octopus.clientDelayInMs | string | `"5000"` | Delay in milliseconds between Octopus client polling requests |
+| integrations.octopus.enabled | bool | `false` | Enable Octopus newsroom system integration |
+| integrations.octopus.existingPasswordKey | string | `"octopus-password"` | Key inside existingSecret that holds the password |
+| integrations.octopus.existingSecret | string | `""` | Name of an existing K8s Secret containing the Octopus password (when set, password is ignored) |
 | integrations.octopus.password | string | `""` | Password for authenticating with the Octopus newsroom system |
 | integrations.octopus.startClient | string | `"false"` | Enable the Octopus client for receiving and processing MOS messages |
 | integrations.octopus.username | string | `""` | Username for authenticating with the Octopus newsroom system |
-| integrations.vidispine | object | `{"baseUrl":"","baseUrlAuth":"","clientId":"","clientSecret":"","defaultLocation":"","locationValuesUrl":"","storage":"","workflow":"","workflowMogrt":"","workflowVersion":"","workflowVersionMogrt":""}` | Base URL for Vidispine media asset management system API |
+| integrations.vidispine | object | `{"baseUrl":"","baseUrlAuth":"","clientId":"","clientSecret":"","defaultLocation":"","existingPasswordKey":"vidispine-client-secret","existingSecret":"","locationValuesUrl":"","storage":"","workflow":"","workflowMogrt":"","workflowVersion":"","workflowVersionMogrt":""}` | Base URL for Vidispine media asset management system API |
 | integrations.vidispine.baseUrl | string | `""` | Base URL for Vidispine media asset management system API |
 | integrations.vidispine.baseUrlAuth | string | `""` | Authentication endpoint URL for Vidispine system |
 | integrations.vidispine.clientId | string | `""` | OAuth client identifier for Vidispine API authentication |
 | integrations.vidispine.clientSecret | string | `""` | OAuth client secret for secure Vidispine API authentication |
 | integrations.vidispine.defaultLocation | string | `""` | Default location value to be pre-selected in the location selector |
+| integrations.vidispine.existingPasswordKey | string | `"vidispine-client-secret"` | Key inside existingSecret that holds the client secret |
+| integrations.vidispine.existingSecret | string | `""` | Name of an existing K8s Secret containing the Vidispine client secret (when set, clientSecret is ignored) |
 | integrations.vidispine.locationValuesUrl | string | `""` | URL for retrieving allowed values for the Location metadata field from Vidispine |
 | integrations.vidispine.storage | string | `""` | Vidispine storage identifier for file operations |
 | integrations.vidispine.workflow | string | `""` | Default workflow identifier in Vidispine for processing uploaded assets |
@@ -441,46 +508,43 @@ vulcano:
 | management.metrics.enable.all | string | `"true"` |  |
 | management.metrics.tags.application | string | `"vulcano-backend"` |  |
 | management.prometheus.metrics.export.enabled | string | `"true"` |  |
-| mongodb | object | `{...}` | MongoDB Configuration |
-| mongodb.architecture | string | `"replicaset"` | MongoDB architecture (standalone or replicaset) |
-| mongodb.auth.existingErlangCookieKey | string | `""` | *(n/a for MongoDB)* |
-| mongodb.auth.existingPasswordKey | string | `"mongodb-root-password"` | Key inside `existingSecret` that holds the root password |
-| mongodb.auth.existingSecret | string | `""` | Name of an existing Secret with MongoDB credentials. When set, `rootPassword` is ignored and no `mongodb-credentials` Secret is created by this chart |
-| mongodb.auth.existingUsernameKey | string | `""` | Key inside `existingSecret` that holds the username. Leave empty to use `rootUser` directly |
-| mongodb.auth.rootPassword | string | `"bitte"` | MongoDB root password (ignored when `existingSecret` is set) |
-| mongodb.auth.rootUser | string | `"root"` | MongoDB root username |
-| mongodb.enabled | bool | `true` | Enable MongoDB deployment as part of this release. Set to `false` when connecting to an external MongoDB (e.g. from `vulcano-common`) |
-| mongodb.externalHost | string | `""` | External MongoDB hostname. When set (and `enabled=false`), Vulcano connects to this host. Credentials from `auth.rootUser` / `auth.rootPassword` (or `auth.existingSecret`) are still required. Example: `mongodb-headless.vulcano-common.svc.cluster.local` |
+| mongodb | object | `{"auth":{"existingSecret":"","existingSecretPasswordKey":"mongodb-root-password","rootPassword":"bitte","rootUsername":"root"},"database":"vulcano","enabled":true,"externalHost":"","fullnameOverride":"mongodb","metrics":{"enabled":false},"persistence":{"enabled":true,"size":"50Gi","storageClassName":""},"replicaCount":3,"resources":{"limits":{"cpu":"2000m","memory":"4Gi"},"requests":{"cpu":"1000m","memory":"2Gi"}}}` | MongoDB Configuration |
+| mongodb.auth.existingSecret | string | `""` | Name of an existing Kubernetes Secret containing MongoDB credentials. When set, rootPassword is ignored and the chart will NOT create a mongodb-credentials secret. |
+| mongodb.auth.existingSecretPasswordKey | string | `"mongodb-root-password"` | Key inside existingSecret that holds the root password (chart default: "mongodb-root-password") |
+| mongodb.auth.rootPassword | string | `"bitte"` | MongoDB root password (ignored when existingSecret is set) |
+| mongodb.auth.rootUsername | string | `"root"` | MongoDB root username |
+| mongodb.database | string | `"vulcano"` | MongoDB database name used by Vulcano (defaults to 'vulcano' if not set) |
+| mongodb.enabled | bool | `true` | Enable MongoDB deployment as part of this release. Set to false when using an external MongoDB (e.g. deployed in vulcano-common). |
+| mongodb.externalHost | string | `""` | External MongoDB host. When set (and enabled=false), Vulcano connects to this host. Credentials from auth.rootUsername / auth.rootPassword (or auth.existingSecret) are still used. Example: "mongodb-headless.vulcano-common.svc.cluster.local" |
 | mongodb.fullnameOverride | string | `"mongodb"` | Full name override for MongoDB resources |
 | mongodb.persistence.enabled | bool | `true` | Enable MongoDB persistence |
-| mongodb.persistence.resourcePolicy | string | `"keep"` | Resource policy for persistent volumes |
-| mongodb.persistence.size | string | `"20Gi"` | MongoDB persistent volume size |
+| mongodb.persistence.size | string | `"50Gi"` | MongoDB persistent volume size |
 | mongodb.persistence.storageClassName | string | `""` | Storage class name for MongoDB |
 | mongodb.replicaCount | int | `3` | Number of MongoDB replicas |
-| ndr.bidLookupUrl | string | `nil` | URL endpoint for looking up BID (Broadcast ID) information in the NDR VDB system |
-| ndr.wikiUrl | string | `nil` | URL to the NDR VDB documentation wiki |
-| ndr.wildcardBid | string | `"xxxxx"` | Wildcard BID pattern used for broadcast ID matching in the NDR VDB system |
+| nameOverride | string | `""` | Override the chart name |
+| ndr.bidLookupUrl | string | `""` |  |
+| ndr.wikiUrl | string | `""` |  |
+| ndr.wildcardBid | string | `""` |  |
 | nodeSelector | object | `{}` | Node selector for pod scheduling |
-| octopus.api | string | `""` | API endpoint URL for Octopus newsroom system integration |
-| octopus.client.delayInMS | string | `"1000"` | Delay in milliseconds between Octopus client polling requests |
-| octopus.enabled | bool | `false` | Enable Octopus newsroom system integration for receiving MOS messages |
-| octopus.password | string | `""` | Password for authenticating with the Octopus newsroom system |
-| octopus.startClient | string | `"false"` | Enable the Octopus client for receiving and processing MOS messages |
-| octopus.username | string | `""` | Username for authenticating with the Octopus newsroom system |
-| podSecurityPolicy.enabled | bool | `false` |  |
+| octopus.api | string | `""` |  |
+| octopus.client.delayInMS | string | `""` |  |
+| octopus.enabled | bool | `false` |  |
+| octopus.password | string | `""` |  |
+| octopus.startClient | string | `""` |  |
+| octopus.username | string | `""` |  |
 | project.delete.ownerOnly | string | `"true"` | Only allow project deletion by the owner |
 | project.sendToUrls | string | `""` | URLs to send project data to external systems |
-| rabbitmq | object | `{...}` | RabbitMQ Configuration |
-| rabbitmq.auth.erlangCookie | string | `"VULCANO_SECRET_COOKIE"` | Erlang cookie for RabbitMQ clustering (ignored when `existingSecret` is set) |
-| rabbitmq.auth.existingErlangCookieKey | string | `"rabbitmq-erlang-cookie"` | Key inside `existingSecret` that holds the Erlang cookie |
-| rabbitmq.auth.existingPasswordKey | string | `"rabbitmq-password"` | Key inside `existingSecret` that holds the RabbitMQ password |
-| rabbitmq.auth.existingSecret | string | `""` | Name of an existing Secret with RabbitMQ credentials. When set, `password` and `erlangCookie` are ignored and no `rabbitmq-credentials` Secret is created by this chart |
-| rabbitmq.auth.password | string | `"vulcano0479"` | RabbitMQ admin password (ignored when `existingSecret` is set) |
+| rabbitmq | object | `{"auth":{"erlangCookie":"VULCANO_SECRET_COOKIE","existingErlangCookieKey":"erlang-cookie","existingPasswordKey":"rabbitmq-password","existingSecret":"","password":"vulcano0479","username":"vulcano"},"enabled":true,"externalHost":"","fullnameOverride":"rabbitmq","jobUpdateQueue":"vulcano-job-updates","metrics":{"enabled":false},"persistence":{"enabled":false},"replicaCount":3,"resources":{"limits":{"cpu":"1000m","memory":"2Gi"},"requests":{"cpu":"500m","memory":"1Gi"}},"service":{"type":"NodePort"}}` | RabbitMQ Configuration |
+| rabbitmq.auth.erlangCookie | string | `"VULCANO_SECRET_COOKIE"` | Erlang cookie for RabbitMQ clustering (ignored when existingSecret is set) |
+| rabbitmq.auth.existingErlangCookieKey | string | `"erlang-cookie"` | Key inside existingSecret that holds the Erlang cookie |
+| rabbitmq.auth.existingPasswordKey | string | `"rabbitmq-password"` | Key inside existingSecret that holds the RabbitMQ password |
+| rabbitmq.auth.existingSecret | string | `""` | Name of an existing Kubernetes Secret containing RabbitMQ credentials. When set, password and erlangCookie are ignored and the chart will NOT create a rabbitmq-credentials secret. |
+| rabbitmq.auth.password | string | `"vulcano0479"` | RabbitMQ admin password (ignored when existingSecret is set) |
 | rabbitmq.auth.username | string | `"vulcano"` | RabbitMQ admin username |
-| rabbitmq.enabled | bool | `true` | Enable RabbitMQ deployment as part of this release. Set to `false` when connecting to an external RabbitMQ (e.g. from `vulcano-common`) |
-| rabbitmq.externalHost | string | `""` | External RabbitMQ hostname. When set (and `enabled=false`), Vulcano connects to this host. Credentials from `auth.username` / `auth.password` (or `auth.existingSecret`) are still required. Example: `rabbitmq.vulcano-common.svc.cluster.local` |
+| rabbitmq.enabled | bool | `true` | Enable RabbitMQ deployment as part of this release. Set to false when using an external RabbitMQ (e.g. deployed in vulcano-common). |
+| rabbitmq.externalHost | string | `""` | External RabbitMQ host. When set (and enabled=false), Vulcano connects to this host. Credentials from auth.username / auth.password (or auth.existingSecret) are still used. Example: "rabbitmq.vulcano-common.svc.cluster.local" |
 | rabbitmq.fullnameOverride | string | `"rabbitmq"` | Full name override for RabbitMQ resources |
-| rabbitmq.jobUpdateQueue | string | `"vulcano-job-updates"` | Queue name for job updates |
+| rabbitmq.jobUpdateQueue | string | `"vulcano-job-updates"` | Name of the RabbitMQ queue used as the return channel from render nodes back to the server. Only set this if you need to run multiple isolated Vulcano instances sharing the same RabbitMQ broker. Defaults to "vulcano-job-updates" when not set. |
 | rabbitmq.metrics.enabled | bool | `false` | Enable RabbitMQ metrics |
 | rabbitmq.persistence.enabled | bool | `false` | Enable RabbitMQ persistence |
 | rabbitmq.replicaCount | int | `3` | Number of RabbitMQ replicas |
@@ -508,21 +572,19 @@ vulcano:
 | tolerations | list | `[]` | Tolerations for pod scheduling on tainted nodes |
 | tomcat.multipart.maxFileSize | string | `"1000MB"` | Maximum file size for multipart uploads |
 | tomcat.multipart.maxRequestSize | string | `"1000MB"` | Maximum request size for multipart uploads |
-| vdb.server | string | `""` | Server hostname or URL for the NDR VDB system |
-| vdb.simulate | string | `"true"` | Enable simulation mode for VDB operations without making actual network calls |
-| vidispine.baseUrl | string | `""` | Base URL for Vidispine media asset management system API |
-| vidispine.baseUrlAuth | string | `""` | Authentication endpoint URL for Vidispine system |
-| vidispine.clientId | string | `""` | OAuth client identifier for Vidispine API authentication |
-| vidispine.clientSecret | string | `""` | OAuth client secret for secure Vidispine API authentication |
-| vidispine.defaultLocation | string | `""` | Default location value to be pre-selected in the location selector |
-| vidispine.enabled | bool | `false` |  |
-| vidispine.locationValuesUrl | string | `""` | URL for retrieving allowed values for the Location metadata field from Vidispine |
-| vidispine.storage | string | `""` | Vidispine storage identifier for file operations |
-| vidispine.workflow | string | `""` | Default workflow identifier in Vidispine for processing uploaded assets |
-| vidispine.workflowMogrt | string | `""` | Specific workflow identifier for MOGRT files in Vidispine |
-| vidispine.workflowMogrt | string | `""` | Specific workflow identifier for MOGRT files in Vidispine |
-| vidispine.workflowVersion | string | `""` | Version number of the default Vidispine workflow to use |
-| vidispine.workflowVersionMogrt | string | `""` | Version number of the MOGRT-specific workflow in Vidispine |
+| vdb.server | string | `""` |  |
+| vdb.simulate | string | `""` |  |
+| vidispine.baseUrl | string | `""` |  |
+| vidispine.baseUrlAuth | string | `""` |  |
+| vidispine.clientId | string | `""` |  |
+| vidispine.clientSecret | string | `""` |  |
+| vidispine.defaultLocation | string | `""` |  |
+| vidispine.locationValuesUrl | string | `""` |  |
+| vidispine.storage | string | `""` |  |
+| vidispine.workflow | string | `""` |  |
+| vidispine.workflowMogrt | string | `""` |  |
+| vidispine.workflowVersion | string | `""` |  |
+| vidispine.workflowVersionMogrt | string | `""` |  |
 | vulcano.allowDownload | string | `"true"` | Enable download functionality for rendered assets in the web interface |
 | vulcano.allowDuplicates | string | `"true"` | Allow creation of assets with duplicate names |
 | vulcano.allowLinebreaksByDefault | string | `"false"` | Enable line breaks in text properties by default when creating new assets |
@@ -531,7 +593,6 @@ vulcano:
 | vulcano.completedAssetInterceptor | string | `""` | HTTP endpoint URL that receives completed asset data and can MODIFY it before final storage |
 | vulcano.completedWebhook | string | `""` | HTTP webhook URL for NOTIFICATION purposes only - receives completed asset data but cannot modify it |
 | vulcano.createAssetInterceptor | string | `""` | HTTP endpoint URL that will be called when a new asset is created |
-| vulcano.customCertificates | string | `"/etc/certs"` | Enable support for custom SSL certificates |
 | vulcano.enabled | bool | `true` |  |
 | vulcano.folder.createUserFolder | string | `"false"` | Enable creation of user-specific folders for organizing generated assets |
 | vulcano.folder.globalParent | string | `""` | Global parent folder path component inserted in generated asset folder structure when user folders are enabled |
@@ -543,15 +604,9 @@ vulcano:
 | vulcano.ingress.annotations."nginx.ingress.kubernetes.io/server-snippets" | string | `"location /ws {\n proxy_set_header Upgrade $http_upgrade;\n proxy_http_version 1.1;\n proxy_set_header X-Forwarded-Host $http_host;\n proxy_set_header X-Forwarded-Proto $scheme;\n proxy_set_header X-Forwarded-For $remote_addr;\n proxy_set_header Host $host;\n proxy_set_header Connection \"upgrade\";\n proxy_cache_bypass $http_upgrade;\n}\n"` |  |
 | vulcano.ingress.className | string | `"nginx"` | Ingress class name |
 | vulcano.ingress.enabled | bool | `true` | Enable ingress |
-| vulcano.ingress.host | string | `"vulcano.example.com"` | Ingress host |
+| vulcano.ingress.hosts | list | `["vulcano.example.com"]` | Ingress hosts (supports multiple domains) |
 | vulcano.ingress.path | string | `"/"` |  |
-| vulcano.ingress.tls | object | `{"enabled":false}` | Enable TLS |
-| vulcano.ingress.tls.enabled | bool | `false` |  |
-| vulcano.ingress.tls.existing.secretName | string | `"tls-vulcano-cert"` |  |
-| vulcano.ingress.tls.letsencrypt.clusterIssuer | string | `"letsencrypt-prod"` |  |
-| vulcano.ingress.tls.letsencrypt.email | string | `"admin@example.com"` |  |
-| vulcano.ingress.tls.letsencrypt.enabled | bool | `false` |  |
-| vulcano.ingress.tls.source | string | `"letsencrypt"` |  |
+| vulcano.ingress.tls | object | `{"enabled":false,"existing":{"secretName":"tls-vulcano-cert"},"letsencrypt":{"clusterIssuer":"letsencrypt-prod","email":"admin@example.com","enabled":false},"source":"letsencrypt"}` | Enable TLS |
 | vulcano.license | object | `{"key":""}` | JWT license key for application licensing |
 | vulcano.livenessProbe.enabled | bool | `false` |  |
 | vulcano.livenessProbe.failureThreshold | int | `3` |  |
@@ -580,13 +635,14 @@ vulcano:
 | vulcano.service.type | string | `"ClusterIP"` | Service type (ClusterIP, NodePort, LoadBalancer) |
 | vulcano.showAllBins | string | `"false"` | Controls whether the frontend displays all bins in the project structure or only those with content |
 | vulcano.storage.accessModes | string | `"ReadWriteOnce"` | Access mode for the PVC |
-| vulcano.storage.annotations | object | `{}` | Annotations for the PVC. Use `helm.sh/resource-policy: keep` to prevent deletion on `helm uninstall` |
-| vulcano.storage.existingClaim | string | `""` | Name of an existing PVC to mount instead of creating a new one. No PVC is created when set. Pair with `extraObjects` to manage the PVC via the chart |
+| vulcano.storage.annotations | object | `{}` | Annotations for the PVC. Example: set helm.sh/resource-policy: keep to prevent deletion on helm uninstall |
+| vulcano.storage.existingClaim | string | `""` | Name of an existing PVC to mount instead of creating a new one. When set, no PVC is created by the chart. Useful for custom CSI storage classes or pre-provisioned PV/PVCs. The PVC/PV itself can be deployed via extraObjects. |
+| vulcano.storage.extraMounts | list | `[]` | Additional per-folder mounts layered on top of the primary mount. Each entry is mounted on both the vulcano and filetransfer pods so the file tree stays consistent (filetransfer mounts read-only).  Each item requires `name` + `mountPath`, plus EITHER:   - `existingClaim`: use a pre-provisioned PVC (chart creates nothing), OR   - `pvc` (+ optional `size`/`accessModes`/`storageClass`/`labels`/`annotations`):     chart templates a fresh PVC for the entry. |
 | vulcano.storage.labels | object | `{}` | Additional labels for the PVC |
 | vulcano.storage.mountPath | string | `"/data"` |  |
-| vulcano.storage.pvc | string | `"smb-vulcano-data"` | Name of the PVC created by the chart (ignored when `existingClaim` is set) |
+| vulcano.storage.pvc | string | `"smb-vulcano-data"` | Name of the PVC that is created by the chart (used when existingClaim is empty) |
 | vulcano.storage.size | string | `"10Gi"` |  |
-| vulcano.storage.storageClass | string | `"longhorn"` | Storage class for the PVC. Leave empty for cluster default, set to `"-"` to omit `storageClassName` entirely |
+| vulcano.storage.storageClass | string | `"longhorn"` | Storage class for the PVC (leave empty for cluster default, set to "-" to omit storageClassName entirely) |
 | vulcano.subtitle | string | `""` | Custom subtitle text displayed in the web interface header |
 | vulcano.useCustomFileName | string | `"false"` | Allow users to specify custom filenames when creating assets instead of using auto-generated names |
 | vulcano.webconfig.disable | string | `"false"` | Disable the web-based configuration interface |
