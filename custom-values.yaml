@@ -112,7 +112,6 @@ mongodb:
     size: "1Gi"
     storageClassName: ""
 
-
   metrics:
     enabled: false
 
