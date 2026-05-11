@@ -75,6 +75,16 @@ spec:
             - name: JAVA_TOOL_OPTIONS
               value: "-Dlogging.file.path={{ .Values.vulcano.storage.mountPath }}/logs -Dlogging.file.name={{ .Values.logging.fileName }}"
 
+            # Service-admin password is sourced from the vulcano-credentials
+            # Secret rather than the configmap so the value doesn't sit in
+            # plaintext config (and so the same secret feeds dflconnector +
+            # filetransfer, keeping all three sides in sync).
+            - name: auth.service_admin_password
+              valueFrom:
+                secretKeyRef:
+                  name: vulcano-credentials
+                  key: service-admin-password
+
             # MongoDB Configuration
             {{- include "vulcano.mongodb.env" . | nindent 12 }}
 

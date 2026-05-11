@@ -93,6 +93,16 @@ RabbitMQ connection string
 {{- end }}
 
 {{/*
+Service admin password.
+Single source of truth so the Vulcano configmap and the vulcano-credentials
+secret (consumed by dflconnector/filetransfer) never diverge — otherwise
+service auth fails with 403 and the connectors crash-loop.
+*/}}
+{{- define "vulcano.serviceAdminPassword" -}}
+{{- .Values.auth.serviceAdminPassword | default "6qmY$JCaJ@6^#4V" -}}
+{{- end }}
+
+{{/*
 MongoDB Spring Boot env vars.
 Emits each property under both the legacy `spring.data.mongodb.*` keys and the
 new `spring.mongodb.*` keys required since the Spring Boot upgrade, so the
