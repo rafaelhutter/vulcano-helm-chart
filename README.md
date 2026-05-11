@@ -274,6 +274,38 @@ vulcano:
 
 When `existingClaim` is set the chart skips PVC creation entirely and mounts the referenced claim directly into the Vulcano pod.
 
+#### Per-folder PVCs (`extraMounts`)
+
+When individual Vulcano folders need different backing storage — e.g. `/data/highres` on fast NVMe while `/data/highres_templates` lives on a separate share — list them under `vulcano.storage.extraMounts`. Each entry is mounted on top of the primary mount on both the `vulcano` and `filetransfer` pods (filetransfer mounts read-only), so the on-disk file tree stays consistent across the components.
+
+For every entry provide `name` + `mountPath` and **either**:
+
+- `existingClaim` — reference a PVC you have already provisioned (the chart will not create one), or
+- `pvc` / `size` / `accessModes` / `storageClass` / `labels` / `annotations` — let the chart template a new PVC alongside the primary one. If `pvc` is omitted the PVC name defaults to `vulcano-<name>`.
+
+```yaml
+vulcano:
+  storage:
+    mountPath: "/data"
+    pvc: "vulcano-data"
+    size: "50Gi"
+
+    extraMounts:
+      # /data/highres backed by a pre-provisioned fast-storage PVC
+      - name: highres
+        mountPath: "/data/highres"
+        existingClaim: "vulcano-highres-fast-nvme"
+
+      # /data/highres_templates backed by a PVC the chart creates
+      - name: highres-templates
+        mountPath: "/data/highres_templates"
+        size: "200Gi"
+        accessModes: "ReadWriteMany"
+        storageClass: "longhorn"
+```
+
+> SMB-CSI provisioning (`smbCsi.enabled`) only applies to the primary PVC. For SMB-backed extras, provision the PV/PVC yourself (e.g. via `extraObjects`) and reference it with `existingClaim`.
+
 ## Values
 
 | Key | Type | Default | Description |
