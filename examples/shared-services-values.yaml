@@ -55,7 +55,6 @@ mongodb:
     size: "20Gi"
     storageClassName: "" # set if required, e.g. "longhorn"
 
-
   metrics:
     enabled: false
 
