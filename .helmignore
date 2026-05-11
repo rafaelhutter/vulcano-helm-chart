@@ -1,0 +1,35 @@
+# Patterns to ignore when building helm packages.
+# Mirrors helm's default .helmignore plus repo-specific exclusions
+# that were ballooning the packaged chart (and the Helm release Secret).
+
+# VCS dirs
+.git/
+.gitignore
+.bzr/
+.hg/
+.hgignore
+.svn/
+
+# OS / editor cruft
+.DS_Store
+*.swp
+*.tmp
+*.bak
+*.orig
+*~
+.idea/
+.vscode/
+*.tmproj
+.project
+
+# Repo-internal artefacts that must never end up in the published chart
+# (top-level only — sub-chart tarballs under charts/*.tgz are required deps).
+/vulcano-*.tgz
+/index.yaml
+/check-values.sh
+deployments/
+.claude/
+
+# Old/large auxiliary docs not needed at runtime
+AI_AGENT_GUIDE.md
+INSTALL.md
