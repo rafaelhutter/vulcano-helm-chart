@@ -49,6 +49,8 @@ spec:
             - name: {{ $key }}
               value: {{ $val | quote }}
             {{- end }}
+            - name: vulcano.base.service_admin_username
+              value: "service_admin"
             - name: vulcano.base.service_admin_password
               valueFrom:
                 secretKeyRef:
