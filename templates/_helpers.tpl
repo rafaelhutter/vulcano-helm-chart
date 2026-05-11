@@ -93,6 +93,47 @@ RabbitMQ connection string
 {{- end }}
 
 {{/*
+MongoDB Spring Boot env vars.
+Emits each property under both the legacy `spring.data.mongodb.*` keys and the
+new `spring.mongodb.*` keys required since the Spring Boot upgrade, so the
+chart works against apps using either binding.
+*/}}
+{{- define "vulcano.mongodb.env" -}}
+{{- $prefixes := list "spring.data.mongodb" "spring.mongodb" -}}
+{{- range $prefix := $prefixes }}
+- name: {{ $prefix }}.host
+  value: {{ include "vulcano.mongodb.host" $ | quote }}
+- name: {{ $prefix }}.port
+  value: "27017"
+- name: {{ $prefix }}.database
+  value: {{ $.Values.mongodb.database | default "vulcano" | quote }}
+- name: {{ $prefix }}.authentication-database
+  value: "admin"
+{{- if $.Values.mongodb.replicaSet.enabled }}
+- name: {{ $prefix }}.replica-set-name
+  value: {{ $.Values.mongodb.replicaSet.name | quote }}
+{{- end }}
+{{- if or $.Values.mongodb.enabled $.Values.mongodb.externalHost }}
+- name: {{ $prefix }}.username
+  value: {{ $.Values.mongodb.auth.rootUsername | default "root" | quote }}
+- name: {{ $prefix }}.password
+  valueFrom:
+    secretKeyRef:
+      {{- if $.Values.mongodb.auth.existingSecret }}
+      name: {{ $.Values.mongodb.auth.existingSecret }}
+      key: {{ $.Values.mongodb.auth.existingSecretPasswordKey | default "mongodb-root-password" }}
+      {{- else if $.Values.mongodb.enabled }}
+      name: {{ $.Values.mongodb.fullnameOverride | default "mongodb" }}
+      key: mongodb-root-password
+      {{- else }}
+      name: mongodb-credentials
+      key: mongodb-root-password
+      {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
 Docker config JSON for image pull secrets
 */}}
 {{- define "vulcano.dockerconfigjson" -}}
