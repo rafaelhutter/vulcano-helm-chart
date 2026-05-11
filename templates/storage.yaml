@@ -94,3 +94,31 @@ spec:
   {{- end }}
 {{- end }}
 {{- end }}
+{{- range $mount := .Values.vulcano.storage.extraMounts }}
+{{- if not $mount.existingClaim }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $mount.pvc | default (printf "vulcano-%s" $mount.name) }}
+  namespace: {{ include "vulcano.namespace" $ }}
+  labels:
+    {{- include "vulcano.labels" $ | nindent 4 }}
+    {{- with $mount.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with $mount.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  accessModes:
+    - {{ $mount.accessModes | default "ReadWriteOnce" }}
+  resources:
+    requests:
+      storage: {{ $mount.size | default "10Gi" }}
+  {{- if $mount.storageClass }}
+  storageClassName: {{ $mount.storageClass | quote }}
+  {{- end }}
+{{- end }}
+{{- end }}

@@ -130,6 +130,27 @@ vulcano:
     # The PVC/PV itself can be deployed via extraObjects.
     existingClaim: ""
 
+    # -- Additional per-folder mounts layered on top of the primary mount.
+    # Each entry is mounted on both the vulcano and filetransfer pods so the
+    # file tree stays consistent (filetransfer mounts read-only).
+    #
+    # Each item requires `name` + `mountPath`, plus EITHER:
+    #   - `existingClaim`: use a pre-provisioned PVC (chart creates nothing), OR
+    #   - `pvc` (+ optional `size`/`accessModes`/`storageClass`/`labels`/`annotations`):
+    #     chart templates a fresh PVC for the entry.
+    extraMounts: []
+    # Example:
+    # extraMounts:
+    #   - name: highres
+    #     mountPath: "/data/highres"
+    #     existingClaim: "vulcano-highres-fast-nvme"
+    #   - name: highres-templates
+    #     mountPath: "/data/highres_templates"
+    #     pvc: "vulcano-highres-templates"
+    #     size: "200Gi"
+    #     accessModes: "ReadWriteMany"
+    #     storageClass: "longhorn"
+
   # Application configuration
   # -- Custom subtitle text displayed in the web interface header
   subtitle: ""

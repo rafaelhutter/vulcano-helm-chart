@@ -276,6 +276,10 @@ spec:
           volumeMounts:
             - name: data
               mountPath: {{ .Values.vulcano.storage.mountPath }}
+            {{- range $mount := .Values.vulcano.storage.extraMounts }}
+            - name: {{ $mount.name }}
+              mountPath: {{ $mount.mountPath }}
+            {{- end }}
             - name: admin-users
               mountPath: /app/admin-users.txt
               subPath: admin-users.txt
@@ -289,6 +293,11 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: {{ .Values.vulcano.storage.existingClaim | default .Values.vulcano.storage.pvc }}
+        {{- range $mount := .Values.vulcano.storage.extraMounts }}
+        - name: {{ $mount.name }}
+          persistentVolumeClaim:
+            claimName: {{ $mount.existingClaim | default ($mount.pvc | default (printf "vulcano-%s" $mount.name)) }}
+        {{- end }}
         - name: admin-users
           configMap:
             name: admin-users
