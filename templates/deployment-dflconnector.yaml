@@ -55,31 +55,7 @@ spec:
                   name: vulcano-credentials
                   key: service-admin-password
             # MongoDB – derived from chart-level mongodb configuration
-            - name: spring.data.mongodb.host
-              value: {{ include "vulcano.mongodb.host" . | quote }}
-            - name: spring.data.mongodb.port
-              value: "27017"
-            - name: spring.data.mongodb.database
-              value: {{ .Values.mongodb.database | default "vulcano" | quote }}
-            - name: spring.data.mongodb.authentication-database
-              value: "admin"
-            {{- if or .Values.mongodb.enabled .Values.mongodb.externalHost }}
-            - name: spring.data.mongodb.username
-              value: {{ .Values.mongodb.auth.rootUsername | default "root" | quote }}
-            - name: spring.data.mongodb.password
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.mongodb.auth.existingSecret }}
-                  name: {{ .Values.mongodb.auth.existingSecret }}
-                  key: {{ .Values.mongodb.auth.existingSecretPasswordKey | default "mongodb-root-password" }}
-                  {{- else if .Values.mongodb.enabled }}
-                  name: {{ .Values.mongodb.fullnameOverride | default "mongodb" }}
-                  key: mongodb-root-password
-                  {{- else }}
-                  name: mongodb-credentials
-                  key: mongodb-root-password
-                  {{- end }}
-            {{- end }}
+            {{- include "vulcano.mongodb.env" . | nindent 12 }}
 
           resources:
             {{- toYaml .Values.dflconnector.resources | nindent 12 }}
