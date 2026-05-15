@@ -312,17 +312,23 @@ This installs MongoDB + RabbitMQ into the `vulcano-common` namespace. After the 
 >
 > Verify with `rs.status()` — one member should show `"stateStr": "PRIMARY"`.
 
-> **⚠️ RabbitMQ – `cloudpirates/rabbitmq` secret key names**
+> **ℹ️ RabbitMQ – `cloudpirates/rabbitmq` secret key names**
 >
-> The `cloudpirates/rabbitmq` sub-chart writes secrets with the keys `erlang-cookie` and `password`
-> (without the `rabbitmq-` prefix used by other charts). Set these overrides in the shared-services values:
+> The `cloudpirates/rabbitmq` sub-chart writes its Secret with the keys
+> `password` and `erlang-cookie` (no `rabbitmq-` prefix). The chart defaults
+> match this:
 >
 > ```yaml
 > rabbitmq:
 >   auth:
->     existingErlangCookieKey: "erlang-cookie"
 >     existingPasswordKey: "password"
+>     existingErlangCookieKey: "erlang-cookie"
 > ```
+>
+> If you point the chart at an externally managed Secret (e.g. Bitwarden,
+> External Secrets) whose keys are named differently — for instance
+> `rabbitmq-password` from a legacy Bitnami import — override these keys to
+> match your external Secret's actual field names.
 
 **Step 2 – Deploy each Vulcano instance**
 
@@ -745,10 +751,10 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | octopus.username | string | `""` |  |
 | project.delete.ownerOnly | string | `"true"` | Only allow project deletion by the owner |
 | project.sendToUrls | string | `""` | URLs to send project data to external systems |
-| rabbitmq | object | `{"auth":{"erlangCookie":"VULCANO_SECRET_COOKIE","existingErlangCookieKey":"erlang-cookie","existingPasswordKey":"rabbitmq-password","existingSecret":"","password":"vulcano0479","username":"vulcano"},"enabled":true,"externalHost":"","fullnameOverride":"rabbitmq","jobUpdateQueue":"vulcano-job-updates","metrics":{"enabled":false},"persistence":{"enabled":false},"replicaCount":3,"resources":{"limits":{"cpu":"1000m","memory":"2Gi"},"requests":{"cpu":"500m","memory":"1Gi"}},"service":{"type":"NodePort"}}` | RabbitMQ Configuration |
+| rabbitmq | object | `{"auth":{"erlangCookie":"VULCANO_SECRET_COOKIE","existingErlangCookieKey":"erlang-cookie","existingPasswordKey":"password","existingSecret":"","password":"vulcano0479","username":"vulcano"},"enabled":true,"externalHost":"","fullnameOverride":"rabbitmq","jobUpdateQueue":"vulcano-job-updates","metrics":{"enabled":false},"persistence":{"enabled":false},"replicaCount":3,"resources":{"limits":{"cpu":"1000m","memory":"2Gi"},"requests":{"cpu":"500m","memory":"1Gi"}},"service":{"type":"NodePort"}}` | RabbitMQ Configuration |
 | rabbitmq.auth.erlangCookie | string | `"VULCANO_SECRET_COOKIE"` | Erlang cookie for RabbitMQ clustering (ignored when existingSecret is set) |
 | rabbitmq.auth.existingErlangCookieKey | string | `"erlang-cookie"` | Key inside existingSecret that holds the Erlang cookie |
-| rabbitmq.auth.existingPasswordKey | string | `"rabbitmq-password"` | Key inside existingSecret that holds the RabbitMQ password |
+| rabbitmq.auth.existingPasswordKey | string | `"password"` | Key inside existingSecret that holds the RabbitMQ password. Default matches the keys written by the cloudpirates/rabbitmq sub-chart's own Secret. Override only when pointing at an externally managed Secret that uses a different key name (e.g. "rabbitmq-password" from a Bitwarden mapping or legacy Bitnami secret). |
 | rabbitmq.auth.existingSecret | string | `""` | Name of an existing Kubernetes Secret containing RabbitMQ credentials. When set, password and erlangCookie are ignored and the chart will NOT create a rabbitmq-credentials secret. |
 | rabbitmq.auth.password | string | `"vulcano0479"` | RabbitMQ admin password (ignored when existingSecret is set) |
 | rabbitmq.auth.username | string | `"vulcano"` | RabbitMQ admin username |

@@ -385,8 +385,12 @@ rabbitmq:
     # -- Name of an existing Kubernetes Secret containing RabbitMQ credentials.
     # When set, password and erlangCookie are ignored and the chart will NOT create a rabbitmq-credentials secret.
     existingSecret: ""
-    # -- Key inside existingSecret that holds the RabbitMQ password
-    existingPasswordKey: "rabbitmq-password"
+    # -- Key inside existingSecret that holds the RabbitMQ password.
+    # Default "password" matches the keys written by the cloudpirates/rabbitmq
+    # sub-chart's own Secret. Override only when pointing at an externally
+    # managed Secret that uses a different key name (e.g. "rabbitmq-password"
+    # from a Bitwarden mapping or legacy Bitnami secret).
+    existingPasswordKey: "password"
     # -- Key inside existingSecret that holds the Erlang cookie
     existingErlangCookieKey: "erlang-cookie"
 
