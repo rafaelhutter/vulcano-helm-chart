@@ -144,6 +144,117 @@ rabbitmq:
     existingErlangCookieKey: "bw-rabbitmq-erlang-cookie"
 ```
 
+### MongoDB Data Preservation Across Upgrades
+
+The `cloudpirates/mongodb` sub-chart provisions its persistent volume via a
+StatefulSet `volumeClaimTemplate`. With the chart's `fullnameOverride: "mongodb"`
+that produces a PVC named **`data-mongodb-0`** (template name `data` +
+StatefulSet name `mongodb` + ordinal `0`).
+
+This matters in two scenarios:
+
+**1. `helm uninstall` followed by `helm install`.**
+Kubernetes does **not** delete PVCs created by `volumeClaimTemplates` when the
+parent StatefulSet is removed. The PVC (and its underlying PV) survive
+`helm uninstall`. When you reinstall the chart with the same release name and
+the same `mongodb.fullnameOverride`, the new StatefulSet picks up the existing
+`data-mongodb-0` PVC and binds to the existing data automatically — **no
+restore step needed**.
+
+**2. Migrating from an older deployment of the same chart family.**
+If the cluster already runs a MongoDB deployed via a different chart
+(Bitnami, custom Helm, etc.), the existing PVC will have a different name
+(typically `datadir-mongodb-0` for Bitnami). Tell the new chart to reuse it:
+
+```yaml
+mongodb:
+  persistence:
+    existingClaim: "datadir-mongodb-0"   # or whatever the existing PVC is called
+```
+
+When `existingClaim` is set the sub-chart skips the `volumeClaimTemplate`
+entirely and mounts the named PVC as the `data` volume directly.
+
+**Verifying before you deploy**
+
+```bash
+kubectl get pvc -n <namespace>
+kubectl get statefulset -n <namespace> mongodb \
+  -o jsonpath='{.spec.volumeClaimTemplates[0].metadata.name}'
+```
+
+If the PVC list contains `data-mongodb-0` and the second command returns
+`data`, a plain `helm upgrade --install` will reuse the existing data.
+
+**Pinning the MongoDB image for byte-for-byte data compatibility**
+
+Each chart release bumps the sub-chart's default Mongo image (e.g. `8.2.4`).
+Minor upgrades (`8.0 → 8.2`) are safe under WiredTiger, but if you need an
+exact image match for the on-disk data — for instance to restore a backup
+from a frozen environment — pin the tag explicitly:
+
+```yaml
+mongodb:
+  image:
+    tag: "8.0.12"
+```
+
+**Belt-and-suspenders: take a `mongodump` snapshot before any change**
+
+```bash
+MONGO_PW=$(kubectl get secret mongodb -n <ns> \
+  -o jsonpath='{.data.mongodb-root-password}' | base64 -d)
+
+STAMP=$(date +%Y%m%d-%H%M)
+kubectl exec -n <ns> mongodb-0 -- \
+  mongodump --host localhost:27017 -u root -p "$MONGO_PW" \
+            --authenticationDatabase admin --db <database> --gzip \
+            --archive=/tmp/mongo-${STAMP}.gz
+
+kubectl cp <ns>/mongodb-0:/tmp/mongo-${STAMP}.gz ./mongo-${STAMP}.gz
+```
+
+To restore later, copy the archive back to a Mongo pod and run
+`mongorestore --gzip --archive=/tmp/mongo-...gz --drop --db <database> ...`
+against the new instance.
+
+### Dry-run pre-flight
+
+`helm install` accepts `--dry-run=server`, which renders the chart, sends it
+to the Kubernetes API for server-side validation (admission webhooks, RBAC,
+CRD existence, schema checks), and returns the result without persisting
+anything. Use it whenever you're unsure whether a values change will apply
+cleanly:
+
+```bash
+helm upgrade --install vulcano vulcano-helm-chart/vulcano \
+  --version 1.2.1 -n vulcano-app \
+  -f values.yaml -f values.secret.yaml \
+  --dry-run=server
+```
+
+> `--dry-run=client` only renders templates locally but **still requires
+> cluster connectivity** to query API capabilities. There is no fully
+> offline dry-run; use `helm template ...` if you need pure local rendering.
+
+### SMB CSI – Active Directory domain authentication
+
+The chart's `smbcreds` Secret only emits `username` + `password` keys; there
+is no separate `domain` key. To authenticate against a Windows / AD share,
+encode the domain into the username field with a backslash:
+
+```yaml
+smbCsi:
+  enabled: true
+  uri: "//fileserver.corp.example.com/share"
+  username: "CORP\\svc_vulcano"
+  # password: -> values.secret.yaml
+```
+
+The `smb.csi.k8s.io` driver accepts both `DOMAIN\user` and `user@DOMAIN`
+formats. Use double-backslash in YAML — single backslash is a YAML escape
+character.
+
 ### Shared Services / Multi-Instance Deployment
 
 You can deploy MongoDB and RabbitMQ **once** into a shared namespace (e.g. `vulcano-common`) and then point multiple independent Vulcano instances to those services. This avoids running a separate database stack per customer / environment.
