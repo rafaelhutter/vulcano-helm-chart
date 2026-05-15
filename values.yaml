@@ -442,6 +442,9 @@ smbCsi:
 
 # Logging Configuration
 logging:
+  # -- Directory written into Spring Boot's `logging.file.path` setting (controls log directory).
+  # Leave empty to fall back to the JVM-arg derived path (`vulcano.storage.mountPath + /logs`).
+  filePath: "/data/logs"
   # -- Path to the log file where application logs are written
   fileName: "/data/LOGS/vulcano_k8s.log"
   # -- Maximum size of the log file before it gets rotated
