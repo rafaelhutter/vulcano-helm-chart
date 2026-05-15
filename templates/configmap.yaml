@@ -206,6 +206,9 @@ data:
   # License Configuration
   vulcano.license.key: {{ .Values.vulcano.license.key | default "" | quote }}
 
+  # Graphic Generator - named rendition formats (e.g. social media sizes)
+  graphicGenerator.rendition.formats: {{ .Values.vulcano.graphicGenerator.rendition.formats | default "" | quote }}
+
   # Data Feed Mapping Configuration
   DATA_FEED_MAPPING_SKIP_UPDATES: {{ .Values.dataFeedMapping.skipUpdates | default "false" | quote }}
   DATA_FEED_MAPPING_IGNORE_DELETE: {{ .Values.dataFeedMapping.ignoreDelete | default "false" | quote }}

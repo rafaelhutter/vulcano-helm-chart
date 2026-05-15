@@ -214,6 +214,13 @@ vulcano:
   license:
     key: ""
 
+  graphicGenerator:
+    rendition:
+      # -- Comma-separated list of named output formats produced by the
+      # graphics generator (e.g. social-media renditions). Format:
+      # "Name1=WxH,Name2=WxH". Empty disables custom format generation.
+      formats: "Facebook=1080x1920,Instagram=1080x1080"
+
 # ---------------------------------------------------------------------------
 # Filetransfer – optional standalone Deployment
 # Connects to the Vulcano backend via the K8s service "vulcano" in the same namespace.
