@@ -11,6 +11,9 @@ type: Opaque
 data:
   username: {{ .Values.smbCsi.username | b64enc | quote }}
   password: {{ .Values.smbCsi.password | b64enc | quote }}
+  {{- with .Values.smbCsi.domain }}
+  domain: {{ . | b64enc | quote }}
+  {{- end }}
 
 ---
 apiVersion: v1

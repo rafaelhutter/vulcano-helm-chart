@@ -442,6 +442,11 @@ smbCsi:
   enabled: false
   username: "username"
   password: "password"
+  # -- Optional Active Directory domain for SMB authentication. When set, the
+  # CSI driver passes `domain=<value>` to mount.cifs instead of relying on
+  # DOMAIN\username parsing. Leave empty for non-AD shares or when the
+  # username field already carries the domain prefix.
+  domain: ""
   uri: "//xxx.xxx.xxx.xxx/mountpoint"
 
 # Logging Configuration
