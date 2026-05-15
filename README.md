@@ -23,6 +23,106 @@ Vulcano - Complete application deployment with MongoDB, RabbitMQ, and optional C
 | oci://registry-1.docker.io/cloudpirates | mongodb(mongodb) | 0.10.3 |
 | oci://registry-1.docker.io/cloudpirates | rabbitmq(rabbitmq) | 0.2.12 |
 
+## Installation
+
+You can either pull the packaged chart from the GitHub Pages helm repo, or clone the source tree and install from disk. Either way, all real credentials live in `install-values.yaml`, which is **gitignored** and never committed.
+
+For a multi-instance deployment (shared MongoDB + RabbitMQ, multiple Vulcano releases pointing at them), see [Shared Services / Multi-Instance Deployment](#shared-services--multi-instance-deployment) further down.
+
+### Option A — install from the helm repo (preferred)
+
+```bash
+helm repo add rafaelhutter https://rafaelhutter.github.io/vulcano-helm-chart
+helm repo update
+
+# Grab a values template, edit it, then install:
+curl -fsSL -o install-values.yaml \
+  https://raw.githubusercontent.com/rafaelhutter/vulcano-helm-chart/main/examples/values.yaml
+$EDITOR install-values.yaml
+
+helm upgrade vulcano rafaelhutter/vulcano --install \
+  -n vulcano-app --create-namespace \
+  -f install-values.yaml
+```
+
+### Option B — install from a source checkout
+
+#### 1. Clone the repository
+
+```bash
+git clone https://github.com/rafaelhutter/vulcano-helm-chart.git
+cd vulcano-helm-chart
+```
+
+#### 2. Create `install-values.yaml`
+
+`install-values.yaml` is **gitignored** (it holds real credentials). Copy the example template as a starting point and edit it for your environment:
+
+```bash
+cp examples/values.yaml install-values.yaml
+$EDITOR install-values.yaml
+```
+
+The file collects everything in one place — no `--set` flags needed:
+
+```yaml
+global:
+  namespace: "vulcano-app"
+  domain: "vulcano.example.com"
+
+imagePullSecrets:
+  enabled: true
+  dockerUsername: "moovit"
+  dockerPassword: "DOCKER_PAT"            # provided by Moovit
+
+vulcano:
+  ingress:
+    enabled: true
+    hosts:
+      - "vulcano.example.com"
+    tls:
+      enabled: true
+      letsencrypt:
+        enabled: true
+        clusterIssuer: "letsencrypt-prod"
+        email: "admin@example.com"
+  license:
+    key: ""                                # provided by Moovit
+
+mongodb:
+  auth:
+    rootUsername: "admin"
+    rootPassword: "CHANGE_ME"
+
+rabbitmq:
+  auth:
+    username: "vulcano"
+    password: "CHANGE_ME"
+    erlangCookie: "RANDOM_LONG_STRING"
+
+auth:
+  mode: "MICROSOFT"
+  microsoft:
+    authority: "https://login.microsoftonline.com/YOUR_TENANT_ID"
+    clientId: "YOUR_CLIENT_ID"
+```
+
+#### 3. Install the chart
+
+```bash
+helm upgrade vulcano --install \
+  -n vulcano-app \
+  --create-namespace \
+  -f install-values.yaml \
+  .
+```
+
+Or run the bundled wrapper, which does the same thing using `examples/values.yaml`:
+
+```bash
+bash examples/install.sh
+```
+
 ## Advanced Configuration
 
 ### Existing Secrets (MongoDB & RabbitMQ)
@@ -146,7 +246,7 @@ helm upgrade --install vulcano-customer1 /path/to/vulcano-helm-chart \
   --values deployments/vulcano-customer1/values.secret.yaml
 ```
 
-Repeat Step 2 for every additional Vulcano instance, changing `global.namespace`, `global.domain`, and `vulcano.ingress.host` each time.
+Repeat Step 2 for every additional Vulcano instance, changing `global.namespace`, `global.domain`, and `vulcano.ingress.hosts` each time.
 
 > **ℹ️ SMB CSI – use IP address for the server**
 >

@@ -1,42 +1,42 @@
 # AI Agent Guide – Vulcano Cluster Setup
 
-Diese Anleitung beschreibt alle kritischen Punkte beim Aufsetzen und Betreiben von MongoDB und RabbitMQ für Vulcano in einem RKE2-Kubernetes-Cluster. Sie basiert auf tatsächlich aufgetretenen Fehlern und deren Lösungen.
+This guide describes every critical step when bringing up and operating MongoDB and RabbitMQ for Vulcano on an RKE2 Kubernetes cluster. It is based on issues we actually hit in production and their fixes.
 
 ---
 
-## Cluster-Fakten (Surfplanet)
+## Cluster facts (Surfplanet)
 
-| Parameter | Wert |
-|-----------|------|
+| Parameter | Value |
+|-----------|-------|
 | `KUBECONFIG` | `/Users/r.hutter/.kube/rancher.surfplanet.yaml` |
-| Cluster-Nodes (IPs) | `10.10.10.35`, `10.10.10.46`, `10.10.10.51`, `10.10.10.80` |
-| Shared-Services Namespace | `vulcano-common` |
-| Helm Release Name (Shared) | **`vulcano-shared`** ← nicht `vulcano-common`! |
-| Helm Release Name (App) | `vulcano-test` (Namespace `vulcano-test`) |
-| Helm Chart Pfad | `/Users/r.hutter/Resilio Sync/_Workspace/git/vulcano-helm-chart` |
-| Values Shared | `deployments/vulcano-common/values.yaml` + `values.secret.yaml` |
-| Values App | `deployments/vulcano-test/values.yaml` + `values.secret.yaml` |
+| Cluster nodes (IPs) | `10.10.10.35`, `10.10.10.46`, `10.10.10.51`, `10.10.10.80` |
+| Shared-services namespace | `vulcano-common` |
+| Helm release name (shared) | **`vulcano-shared`** ← not `vulcano-common`! |
+| Helm release name (app) | `vulcano-test` (namespace `vulcano-test`) |
+| Helm chart path | `/Users/r.hutter/Resilio Sync/_Workspace/git/vulcano-helm-chart` |
+| Shared values | `deployments/vulcano-common/values.yaml` + `values.secret.yaml` |
+| App values | `deployments/vulcano-test/values.yaml` + `values.secret.yaml` |
 
-> **⚠️ Wichtig:** Der Helm Release-Name für Shared Services muss `vulcano-shared` sein (nicht `vulcano-common`).
-> Helm nutzt den Release-Namen als Label `app.kubernetes.io/instance` — und der `rabbitmq-external`-NodePort-Selector
-> referenziert dieses Label. Falscher Release-Name → keine Endpoints → keine Verbindung.
+> **⚠️ Important:** The Helm release name for the shared services MUST be `vulcano-shared` (not `vulcano-common`).
+> Helm uses the release name as the `app.kubernetes.io/instance` label — and the selector of the
+> `rabbitmq-external` NodePort service references that label. Wrong release name → no endpoints → no connection.
 
 ---
 
 ## 1. MongoDB ReplicaSet
 
 ### Problem
-Der `cloudpirates/mongodb` Sub-Chart **initiiert den ReplicaSet nicht automatisch**. Nach dem ersten `helm install` laufen alle 3 Pods einzeln ohne RS-Verbindung. Vulcano startet aber, läuft jedoch ohne ReplicaSet-Features (kein Primary-Failover).
+The `cloudpirates/mongodb` sub-chart **does not initiate the ReplicaSet automatically**. After the first `helm install` all three pods run standalone with no RS link. Vulcano will start, but without ReplicaSet features (no primary failover).
 
-### Erkennung
+### Detection
 ```bash
 kubectl exec -it mongodb-0 -n vulcano-common -- mongosh \
   -u admin -p <rootPassword> --authenticationDatabase admin \
   --eval 'rs.status().ok'
-# Gibt 0 zurück wenn RS nicht initiiert
+# Returns 0 when the RS has not been initiated
 ```
 
-### Lösung: RS einmalig manuell initiieren
+### Fix: initiate the RS once, manually
 ```bash
 kubectl exec -it mongodb-0 -n vulcano-common -- mongosh \
   -u admin -p <rootPassword> --authenticationDatabase admin \
@@ -50,15 +50,15 @@ kubectl exec -it mongodb-0 -n vulcano-common -- mongosh \
   })'
 ```
 
-Verifizieren (nach ~10s):
+Verify (after ~10 s):
 ```bash
 kubectl exec -it mongodb-0 -n vulcano-common -- mongosh \
   -u admin -p <rootPassword> --authenticationDatabase admin \
   --eval 'rs.status().members.forEach(m => print(m.name, m.stateStr))'
-# Erwartete Ausgabe: einer PRIMARY, zwei SECONDARY
+# Expected output: one PRIMARY, two SECONDARY
 ```
 
-### Konfiguration in values.yaml
+### `values.yaml` configuration
 ```yaml
 mongodb:
   enabled: true
@@ -75,34 +75,34 @@ mongodb:
     resourcePolicy: "keep"
 ```
 
-> **`resourcePolicy: keep`** verhindert, dass die PVCs bei `helm uninstall` gelöscht werden. Nie ohne diesen Wert deployen!
+> **`resourcePolicy: keep`** prevents the PVCs from being deleted on `helm uninstall`. Never deploy without it!
 
 ---
 
-## 2. RabbitMQ Cluster
+## 2. RabbitMQ cluster
 
-### Problem: Peer Discovery MUSS aktiviert werden
-Ohne `peerDiscoveryK8sPlugin.enabled: true` starten alle 3 RabbitMQ-Pods als **völlig isolierte Standalone-Instanzen**. Sie kennen sich nicht. Jeder Pod hat seine eigene Queue-Welt.
+### Problem: peer discovery MUST be enabled
+Without `peerDiscoveryK8sPlugin.enabled: true`, all three RabbitMQ pods come up as **completely isolated standalone instances**. They don't know about each other; every pod has its own queue world.
 
-**Symptome:**
-- Verbindungen „kommen und gehen" (Rendernode verbindet sich Round-Robin zu verschiedenen Pods)
-- Queues erscheinen und verschwinden
-- Manchmal gibt es `vulcano.jobs`, manchmal nicht
-- Management-UI zeigt je nach getrofftem Pod unterschiedliche Cluster-Größe (1 statt 3)
+**Symptoms:**
+- Connections "come and go" (render nodes round-robin to different pods)
+- Queues appear and disappear
+- Sometimes `vulcano.jobs` exists, sometimes not
+- Management UI shows different cluster sizes depending on which pod you hit (1 instead of 3)
 
-**Diagnose:**
+**Diagnosis:**
 ```bash
-# Mehrfach abfragen – zeigt je nach Pod verschiedene Antworten bei FEHLER:
+# Poll several times — shows different answers per pod when broken:
 for i in 1 2 3 4 5; do
   curl -s -u "vulcano:<password>" "http://10.10.10.35:31672/api/nodes" | \
     python3 -c "import json,sys; n=json.load(sys.stdin); print(len(n), [x['name'].split('.')[0].split('@')[1] for x in n])"
   sleep 1
 done
-# FEHLER: gibt mal "1 ['rabbitmq-0']", mal "1 ['rabbitmq-1']", mal "1 ['rabbitmq-2']" zurück
-# OK:     gibt immer "3 ['rabbitmq-0', 'rabbitmq-1', 'rabbitmq-2']" zurück
+# BROKEN: returns "1 ['rabbitmq-0']", then "1 ['rabbitmq-1']", then "1 ['rabbitmq-2']"
+# OK:     always returns "3 ['rabbitmq-0', 'rabbitmq-1', 'rabbitmq-2']"
 ```
 
-### Lösung: Peer Discovery aktivieren
+### Fix: enable peer discovery
 ```yaml
 rabbitmq:
   enabled: true
@@ -114,13 +114,13 @@ rabbitmq:
     existingErlangCookieKey: "erlang-cookie"   # ← cloudpirates sub-chart key name
     existingPasswordKey: "password"             # ← cloudpirates sub-chart key name
 
-  # ↓ PFLICHT – ohne das kein echter Cluster
+  # ↓ MANDATORY – without this there is no real cluster
   peerDiscoveryK8sPlugin:
     enabled: true
     addressType: hostname
 
   rbac:
-    create: true        # Peer Discovery braucht RBAC (endpoints lesen)
+    create: true        # peer discovery needs RBAC (read endpoints)
   serviceAccount:
     create: true
 
@@ -128,35 +128,35 @@ rabbitmq:
     type: ClusterIP
 
   persistence:
-    enabled: false      # RabbitMQ-Daten sind flüchtig, queues werden von App neu deklariert
+    enabled: false      # RabbitMQ data is transient; queues are re-declared by the app
 
   metrics:
     enabled: false
 ```
 
-> **`existingErlangCookieKey: "erlang-cookie"`** und **`existingPasswordKey: "password"`**: Der cloudpirates Sub-Chart schreibt die Secret-Keys ohne `rabbitmq-` Prefix. Die Defaults des Hauptcharts (`rabbitmq-erlang-cookie`, `rabbitmq-password`) passen nicht — diese Overrides sind zwingend notwendig.
+> **`existingErlangCookieKey: "erlang-cookie"`** and **`existingPasswordKey: "password"`**: the cloudpirates sub-chart writes secret keys **without** the `rabbitmq-` prefix. The main chart's defaults (`rabbitmq-erlang-cookie`, `rabbitmq-password`) do not match — these overrides are mandatory.
 
-### Neuinstallation bei beschädigtem Cluster-Zustand
+### Re-installing after a broken cluster state
 
-Wenn die Pods isoliert laufen und `helm upgrade` nicht hilft:
+If pods are running isolated and `helm upgrade` does not help:
 
 ```bash
-# 1. StatefulSet löschen (Pods werden mitgelöscht, PVCs bleiben - aber persistence=false)
+# 1. Delete the StatefulSet (pods are deleted with it; PVCs remain — but persistence=false anyway)
 kubectl --kubeconfig /Users/r.hutter/.kube/rancher.surfplanet.yaml \
   delete statefulset rabbitmq -n vulcano-common
 
-# 2. Altes Secret + ConfigMap löschen
+# 2. Delete old Secret + ConfigMap
 kubectl --kubeconfig /Users/r.hutter/.kube/rancher.surfplanet.yaml \
   delete secret rabbitmq configmap rabbitmq-config -n vulcano-common --ignore-not-found
 
-# 3. Helm-Release-Status prüfen (könnte "failed" sein nach abgebrochenem Upgrade)
+# 3. Check Helm release status (may be "failed" after an aborted upgrade)
 KUBECONFIG=/Users/r.hutter/.kube/rancher.surfplanet.yaml helm ls -n vulcano-common
 
-# 4. Falls "failed": rollback auf letzte funktionierende Revision
+# 4. If "failed": roll back to the last good revision
 KUBECONFIG=/Users/r.hutter/.kube/rancher.surfplanet.yaml \
   helm rollback vulcano-shared <revision> -n vulcano-common
 
-# 5. Dann normales Upgrade
+# 5. Then run the normal upgrade
 KUBECONFIG=/Users/r.hutter/.kube/rancher.surfplanet.yaml helm upgrade vulcano-shared \
   "/Users/r.hutter/Resilio Sync/_Workspace/git/vulcano-helm-chart" \
   --namespace vulcano-common \
@@ -166,14 +166,14 @@ KUBECONFIG=/Users/r.hutter/.kube/rancher.surfplanet.yaml helm upgrade vulcano-sh
 
 ---
 
-## 3. RabbitMQ NodePort für externe Rendernodes
+## 3. RabbitMQ NodePort for external render nodes
 
-Rendernodes laufen außerhalb des Clusters und müssen RabbitMQ über eine feste Node-IP + Port erreichen.
+Render nodes run outside the cluster and must reach RabbitMQ via a stable node IP + port.
 
-### Warum extraObjects statt Sub-Chart-Service?
-Der Sub-Chart ignoriert `nodePorts`-Werte im `service`-Block. Die einzige zuverlässige Methode ist ein separater Service via `extraObjects`.
+### Why `extraObjects` instead of the sub-chart service?
+The sub-chart ignores `nodePorts` values in its `service` block. The only reliable approach is a separate Service via `extraObjects`.
 
-### Konfiguration
+### Configuration
 ```yaml
 extraObjects:
   - apiVersion: v1
@@ -185,7 +185,7 @@ extraObjects:
       type: NodePort
       selector:
         app.kubernetes.io/name: rabbitmq
-        app.kubernetes.io/instance: vulcano-shared   # ← BEIDE Labels nötig!
+        app.kubernetes.io/instance: vulcano-shared   # ← BOTH labels required!
       ports:
         - name: amqp
           port: 5672
@@ -197,19 +197,19 @@ extraObjects:
           nodePort: 31672
 ```
 
-> **`app.kubernetes.io/instance: vulcano-shared`** ist kritisch. Fehlt dieses Label, hat der Service keine Endpoints (0 Pods selektiert). Der Wert muss dem Helm Release-Namen entsprechen.
+> **`app.kubernetes.io/instance: vulcano-shared`** is critical. Without it the Service has no endpoints (0 pods selected). The value must equal the Helm release name.
 
-### Connectivity-Test
+### Connectivity test
 ```bash
-# TCP-Erreichbarkeit
-nc -z -w 3 10.10.10.35 32672 && echo "OK" || echo "FEHLER"
+# TCP reachability
+nc -z -w 3 10.10.10.35 32672 && echo "OK" || echo "FAIL"
 
-# AMQP-Auth-Test (Python/pika oder über Management API)
+# AMQP auth test (Python/pika or via the management API)
 curl -s -u "vulcano:<password>" "http://10.10.10.35:31672/api/whoami"
-# Erwartete Ausgabe: {"name":"vulcano","tags":["administrator"]}
+# Expected output: {"name":"vulcano","tags":["administrator"]}
 ```
 
-### Rendernode application.properties
+### Render node `application.properties`
 ```properties
 spring.rabbitmq.addresses=10.10.10.35:32672,10.10.10.46:32672,10.10.10.51:32672,10.10.10.80:32672
 spring.rabbitmq.username=vulcano
@@ -217,24 +217,24 @@ spring.rabbitmq.password=<password>
 spring.rabbitmq.virtual-host=/
 ```
 
-> **`spring.rabbitmq.addresses`** (Plural mit mehreren IPs): Aktiviert den Multi-Address-Pfad in `RabbitMQConnectionConfig.java`. **Nicht** `spring.rabbitmq.host` verwenden — das geht nur zu einem einzigen Pod.
+> **`spring.rabbitmq.addresses`** (plural, multiple IPs) activates the multi-address path in `RabbitMQConnectionConfig.java`. **Do not** use `spring.rabbitmq.host` — that only ever talks to a single pod.
 
 ---
 
-## 4. Cluster-Gesundheit verifizieren
+## 4. Verifying cluster health
 
-### Schnellcheck: Alles OK?
+### Quick check: is everything OK?
 ```bash
-PASSWORD="wlIXjp0cBI9m4bNSqNjx35A9qATjz3n"
+PASSWORD="<password>"   # set this to the RabbitMQ admin password
 
 echo "=== Pods ==="
 kubectl --kubeconfig /Users/r.hutter/.kube/rancher.surfplanet.yaml get pods -n vulcano-common
 
-echo "=== RabbitMQ Cluster ==="
+echo "=== RabbitMQ cluster ==="
 curl -s -u "vulcano:$PASSWORD" "http://10.10.10.35:31672/api/nodes" | python3 -c "
 import json,sys
 nodes=json.load(sys.stdin)
-print(f'Nodes: {len(nodes)} (erwartet: 3)')
+print(f'Nodes: {len(nodes)} (expected: 3)')
 for n in nodes:
   print(f\"  {n['name'].split('.')[0].split('@')[1]}: running={n['running']}, partitions={n['partitions']}\")
 "
@@ -248,24 +248,24 @@ for q in queues:
 "
 ```
 
-**Erwartetes Ergebnis:**
-- 3 Pods: `rabbitmq-0/1/2` alle `1/1 Running`
-- 3 Cluster-Nodes, alle `running=True`, `partitions=[]`
-- Queues `vulcano.jobs` und `vulcano-job-updates` im Zustand `running`
+**Expected result:**
+- 3 pods: `rabbitmq-0/1/2` all `1/1 Running`
+- 3 cluster nodes, all `running=True`, `partitions=[]`
+- Queues `vulcano.jobs` and `vulcano-job-updates` in state `running`
 
 ---
 
-## 5. Standard Helm-Upgrade-Befehl
+## 5. Standard Helm upgrade command
 
 ```bash
-# Shared Services
+# Shared services
 KUBECONFIG=/Users/r.hutter/.kube/rancher.surfplanet.yaml helm upgrade vulcano-shared \
   "/Users/r.hutter/Resilio Sync/_Workspace/git/vulcano-helm-chart" \
   --namespace vulcano-common \
   --values "/Users/r.hutter/Resilio Sync/_Workspace/git/vulcano-helm-chart/deployments/vulcano-common/values.yaml" \
   --values "/Users/r.hutter/Resilio Sync/_Workspace/git/vulcano-helm-chart/deployments/vulcano-common/values.secret.yaml"
 
-# Vulcano App (vulcano-test)
+# Vulcano app (vulcano-test)
 KUBECONFIG=/Users/r.hutter/.kube/rancher.surfplanet.yaml helm upgrade vulcano-test \
   "/Users/r.hutter/Resilio Sync/_Workspace/git/vulcano-helm-chart" \
   --namespace vulcano-test \
@@ -273,17 +273,17 @@ KUBECONFIG=/Users/r.hutter/.kube/rancher.surfplanet.yaml helm upgrade vulcano-te
   --values "/Users/r.hutter/Resilio Sync/_Workspace/git/vulcano-helm-chart/deployments/vulcano-test/values.secret.yaml"
 ```
 
-> **Immer den lokalen Chart-Pfad verwenden**, nicht den publizierten Chart — der lokale enthält alle Bugfixes.
+> **Always use the local chart path**, not the published chart — the local copy carries the latest bug fixes.
 
 ---
 
-## 6. Häufige Fehler und deren Ursachen
+## 6. Common failures and their root causes
 
-| Symptom | Ursache | Lösung |
-|---------|---------|--------|
-| RabbitMQ Queues kommen und gehen | `peerDiscoveryK8sPlugin.enabled: false` — 3 Standalone-Instanzen | `enabled: true` setzen, StatefulSet neu erstellen |
-| `rabbitmq-external` hat keine Endpoints | Selector fehlt `app.kubernetes.io/instance: vulcano-shared` | Selector ergänzen |
-| Rendernode `ACCESS_REFUSED` | `spring.rabbitmq.host` statt `spring.rabbitmq.addresses` → Single-Adress-Pfad | `addresses` mit allen 4 Node-IPs konfigurieren |
-| `helm upgrade` schlägt fehl mit "ownership conflict" | Falscher Release-Name (z.B. `vulcano-common` statt `vulcano-shared`) | Immer Release-Name `vulcano-shared` verwenden |
-| MongoDB-Verbindungsfehler `not primary` | RS nicht initiiert | `rs.initiate()` manuell ausführen |
-| `helm upgrade` Status: `failed` | Vorheriges Upgrade abgebrochen | `helm rollback vulcano-shared <letzte-ok-revision>` dann neu upgraden |
+| Symptom | Root cause | Fix |
+|---------|-----------|-----|
+| RabbitMQ queues come and go | `peerDiscoveryK8sPlugin.enabled: false` — three standalone instances | Set `enabled: true`, recreate the StatefulSet |
+| `rabbitmq-external` has no endpoints | Selector is missing `app.kubernetes.io/instance: vulcano-shared` | Add the missing selector label |
+| Render node `ACCESS_REFUSED` | `spring.rabbitmq.host` instead of `spring.rabbitmq.addresses` → single-address path | Configure `addresses` with all four node IPs |
+| `helm upgrade` fails with "ownership conflict" | Wrong release name (e.g. `vulcano-common` instead of `vulcano-shared`) | Always use the release name `vulcano-shared` |
+| MongoDB connection error `not primary` | RS not initiated | Run `rs.initiate()` manually |
+| `helm upgrade` status: `failed` | Previous upgrade aborted | `helm rollback vulcano-shared <last-good-revision>`, then upgrade again |

@@ -21,16 +21,16 @@ echo "╚═══════════════════════�
 echo ""
 
 # --- 1. Helm repository ---
-echo "▶ Helm Repository hinzufügen..."
+echo "▶ Adding Helm repository..."
 helm repo add "${REPO_NAME}" "${REPO_URL}" 2>/dev/null || true
 helm repo update
 
 # --- 2. Namespace ---
-echo "▶ Namespace '${NAMESPACE}' anlegen..."
+echo "▶ Creating namespace '${NAMESPACE}'..."
 kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
 
 # --- 3. Install shared services ---
-echo "▶ Shared Services (MongoDB + RabbitMQ) installieren..."
+echo "▶ Installing shared services (MongoDB + RabbitMQ)..."
 helm upgrade --install "${RELEASE}" "${CHART}" \
   --namespace "${NAMESPACE}" \
   --values "${VALUES_FILE}" \
@@ -38,9 +38,9 @@ helm upgrade --install "${RELEASE}" "${CHART}" \
   --timeout 15m
 
 echo ""
-echo "✅ Shared Services bereit in Namespace '${NAMESPACE}'!"
+echo "✅ Shared services ready in namespace '${NAMESPACE}'!"
 echo ""
-echo "Folgende Endpoints stehen den Vulcano-Instanzen zur Verfügung:"
+echo "The following endpoints are available to Vulcano instances:"
 echo ""
 echo "  MongoDB (ReplicaSet):"
 echo "    mongodb-headless.${NAMESPACE}.svc.cluster.local:27017"
@@ -48,5 +48,5 @@ echo ""
 echo "  RabbitMQ:"
 echo "    rabbitmq.${NAMESPACE}.svc.cluster.local:5672"
 echo ""
-echo "Nächster Schritt: Vulcano-Instanz(en) mit vulcano-only-values.yaml deployen:"
+echo "Next step: deploy the Vulcano instance(s) using vulcano-only-values.yaml:"
 echo "  bash examples/install.sh --values examples/vulcano-only-values.yaml"

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ============================================================
-#  Vulcano – Installationsscript
-#  Voraussetzungen: helm >= 3.0, kubectl (konfiguriert)
+#  Vulcano – Installation script
+#  Prerequisites: helm >= 3.0, kubectl (configured)
 # ============================================================
 set -euo pipefail
 
@@ -17,17 +17,17 @@ echo "║       Vulcano Helm Installation          ║"
 echo "╚══════════════════════════════════════════╝"
 echo ""
 
-# --- 1. Helm-Repository hinzufügen ---
-echo "▶ Helm Repository hinzufügen..."
+# --- 1. Add Helm repository ---
+echo "▶ Adding Helm repository..."
 helm repo add "${REPO_NAME}" "${REPO_URL}" 2>/dev/null || true
 helm repo update
 
-# --- 2. Namespace anlegen ---
-echo "▶ Namespace '${NAMESPACE}' anlegen..."
+# --- 2. Create namespace ---
+echo "▶ Creating namespace '${NAMESPACE}'..."
 kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
 
 # --- 3. Helm install / upgrade ---
-echo "▶ Vulcano installieren / upgraden..."
+echo "▶ Installing / upgrading Vulcano..."
 helm upgrade --install "${RELEASE}" "${CHART}" \
   --namespace "${NAMESPACE}" \
   --values "${VALUES_FILE}" \
@@ -35,13 +35,13 @@ helm upgrade --install "${RELEASE}" "${CHART}" \
   --timeout 10m
 
 echo ""
-echo "✅ Installation abgeschlossen!"
+echo "✅ Installation complete!"
 echo ""
-echo "Status prüfen:"
+echo "Check status:"
 echo "  kubectl get pods -n ${NAMESPACE}"
 echo ""
-echo "Logs anzeigen:"
+echo "Tail logs:"
 echo "  kubectl logs deployment/vulcano -n ${NAMESPACE} -f"
 echo ""
-echo "Upgrade (bei neuer Chart-Version):"
+echo "Upgrade (when a new chart version is published):"
 echo "  helm repo update && bash $0"
