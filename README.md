@@ -1,6 +1,6 @@
 # vulcano
 
-![Version: 1.2.3](https://img.shields.io/badge/Version-1.2.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.9.13](https://img.shields.io/badge/AppVersion-1.9.13-informational?style=flat-square)
+![Version: 1.2.4](https://img.shields.io/badge/Version-1.2.4-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.9.13](https://img.shields.io/badge/AppVersion-1.9.13-informational?style=flat-square)
 
 Vulcano - Complete application deployment with MongoDB, RabbitMQ, and optional CSI driver
 
@@ -228,7 +228,7 @@ cleanly:
 
 ```bash
 helm upgrade --install vulcano vulcano-helm-chart/vulcano \
-  --version 1.2.3 -n vulcano-app \
+  --version 1.2.4 -n vulcano-app \
   -f values.yaml -f values.secret.yaml \
   --dry-run=server
 ```
