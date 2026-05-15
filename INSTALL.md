@@ -1,6 +1,6 @@
 # Vulcano Helm Chart Installation Guide
 
-This guide provides step-by-step instructions for deploying Vulcano using the Helm chart.
+This guide provides step-by-step instructions for deploying Vulcano with the Helm chart.
 
 ## Table of Contents
 
@@ -18,60 +18,60 @@ Before installing, ensure you have:
 - Kubernetes cluster (v1.19+)
 - Helm 3.0+
 - kubectl configured to access your cluster
-- At least 8GB RAM and 20GB storage available
+- At least 8 GB RAM and 20 GB storage available
 
 ### Optional but Recommended
 
 - CSI SMB Driver (for SMB mounts)
 - cert-manager (for TLS certificates)
-- nginx-ingress-controller (for ingress)
+- ingress-nginx (for ingress)
 
 ## Quick Start
 
-The fastest way to get started:
+The fastest way to get started — assumes you are inside the chart directory:
 
 ```bash
 # 1. Create namespace
 kubectl create namespace vulcano-app
 
 # 2. Install with defaults (includes MongoDB and RabbitMQ)
-helm install vulcano ./helm-chart-new -n vulcano-app
+helm install vulcano . -n vulcano-app
 
-# 3. Wait for pods to start
+# 3. Wait for the pods to start
 kubectl get pods -n vulcano-app -w
 
 # 4. Access the service
 kubectl port-forward svc/vulcano 8889:8889 -n vulcano-app
-# Navigate to http://localhost:8889
+# Open http://localhost:8889
 ```
 
 ## Installation Methods
 
-### Method 1: Default Installation
+### Method 1: Default installation (local chart)
 
 ```bash
-helm install vulcano ./helm-chart-new -n vulcano-app
+helm install vulcano . -n vulcano-app
 ```
 
 This deploys:
 - Vulcano application
-- MongoDB (standalone)
-- RabbitMQ (single node)
-- All required RBAC and network policies
+- MongoDB (3 replicas by default)
+- RabbitMQ (3 replicas by default)
+- All required RBAC and service accounts
 
-### Method 2: Production Installation
+### Method 2: Production installation
 
 ```bash
 # Create namespace
 kubectl create namespace vulcano-prod
 
-# Install with production values
-helm install vulcano ./helm-chart-new \
+# Install with the customer values template
+helm install vulcano . \
   -n vulcano-prod \
-  -f examples/production-values.yaml
+  -f examples/values.yaml
 ```
 
-Update the following in `production-values.yaml` before installation:
+Update at least the following in `examples/values.yaml` (or in your own copy) before installing:
 
 ```yaml
 auth:
@@ -94,43 +94,40 @@ smbCsi:
   uri: "//your-nas.example.com/vulcano"
 ```
 
-### Method 3: Development Installation
+### Method 3: Shared services (multi-instance)
+
+If you want to deploy MongoDB and RabbitMQ **once** and point multiple Vulcano releases at them, see the *Shared Services / Multi-Instance Deployment* section in [README.md](README.md) and use the templates in `examples/`:
+
+- `examples/shared-services-values.yaml` — deploys MongoDB + RabbitMQ only (e.g. namespace `vulcano-common`)
+- `examples/vulcano-only-values.yaml` — deploys a Vulcano instance pointing at the shared services
+
+### Method 4: Install from the GitHub Pages Helm repository (recommended)
+
+The simplest installation method — install the chart straight from the published Helm repository:
 
 ```bash
-kubectl create namespace vulcano-dev
-
-helm install vulcano ./helm-chart-new \
-  -n vulcano-dev \
-  -f examples/dev-values.yaml
-```
-
-### Method 4: Install from GitHub Pages Helm Repository (empfohlen)
-
-Die einfachste Installationsmethode: Chart direkt aus dem Helm-Repository installieren:
-
-```bash
-# Repository hinzufügen
+# Add the repository
 helm repo add rafaelhutter https://rafaelhutter.github.io/vulcano-helm-chart
 helm repo update
 
-# Namespace erstellen
+# Create the namespace
 kubectl create namespace vulcano-app
 
-# Chart installieren
+# Install the chart
 helm install vulcano rafaelhutter/vulcano \
-  --version 1.0.0 \
+  --version 1.2.1 \
   -n vulcano-app \
   -f custom-values.yaml
 ```
 
-Das Repository wird automatisch bei jedem Push auf `main` aktualisiert.
+The repository is rebuilt automatically on every push to `main`.
 
 ### Method 5: External MongoDB and RabbitMQ
 
-If you have existing MongoDB and RabbitMQ services:
+If you already have MongoDB and RabbitMQ services available:
 
 ```bash
-helm install vulcano ./helm-chart-new \
+helm install vulcano . \
   -n vulcano-app \
   --set mongodb.enabled=false \
   --set rabbitmq.enabled=false \
@@ -142,18 +139,18 @@ helm install vulcano ./helm-chart-new \
 
 ### Common Configuration Options
 
-#### 1. Change Image Versions
+#### 1. Change image versions
 
 ```bash
-helm install vulcano ./helm-chart-new -n vulcano-app \
-  --set images.vulcano.tag="1.6.0"
+helm install vulcano . -n vulcano-app \
+  --set images.vulcano.tag="1.9.13"
 ```
 
-#### 2. Configure Ingress with Let's Encrypt
+#### 2. Configure ingress with Let's Encrypt
 
 ```bash
-helm install vulcano ./helm-chart-new -n vulcano-app \
-  --set vulcano.ingress.host="vulcano.example.com" \
+helm install vulcano . -n vulcano-app \
+  --set vulcano.ingress.hosts[0]="vulcano.example.com" \
   --set vulcano.ingress.tls.enabled=true \
   --set vulcano.ingress.tls.source="letsencrypt" \
   --set vulcano.ingress.tls.letsencrypt.enabled=true \
@@ -161,17 +158,17 @@ helm install vulcano ./helm-chart-new -n vulcano-app \
   --set vulcano.ingress.tls.letsencrypt.email="admin@example.com"
 ```
 
-#### 2b. Configure Ingress with Existing Certificate
+#### 2b. Configure ingress with an existing certificate
 
 ```bash
-helm install vulcano ./helm-chart-new -n vulcano-app \
-  --set vulcano.ingress.host="vulcano.example.com" \
+helm install vulcano . -n vulcano-app \
+  --set vulcano.ingress.hosts[0]="vulcano.example.com" \
   --set vulcano.ingress.tls.enabled=true \
   --set vulcano.ingress.tls.source="existing" \
   --set vulcano.ingress.tls.existing.secretName="tls-vulcano-cert"
 ```
 
-#### 3. Enable SMB CSI Driver
+#### 3. Enable the SMB CSI driver
 
 First, install the CSI driver:
 
@@ -181,29 +178,29 @@ helm install csi-driver-smb csi-driver-smb/csi-driver-smb \
   --namespace kube-system
 ```
 
-Then enable in Vulcano chart:
+Then enable it in the Vulcano chart:
 
 ```bash
-helm install vulcano ./helm-chart-new -n vulcano-app \
+helm install vulcano . -n vulcano-app \
   --set smbCsi.enabled=true \
   --set smbCsi.uri="//storage.example.com/vulcano" \
   --set smbCsi.username="storageuser" \
   --set smbCsi.password="storagepass"
 ```
 
-#### 4. Scale to Multiple Replicas
+#### 4. Scale to multiple replicas
 
 ```bash
-helm install vulcano ./helm-chart-new -n vulcano-app \
+helm install vulcano . -n vulcano-app \
   --set vulcano.replicaCount=3 \
   --set mongodb.replicaCount=3 \
   --set rabbitmq.replicaCount=3
 ```
 
-#### 5. Configure Resource Limits
+#### 5. Configure resource limits
 
 ```bash
-helm install vulcano ./helm-chart-new -n vulcano-app \
+helm install vulcano . -n vulcano-app \
   --set 'vulcano.resources.requests.cpu=1000m' \
   --set 'vulcano.resources.limits.cpu=2000m' \
   --set 'vulcano.resources.requests.memory=2Gi' \
@@ -212,7 +209,7 @@ helm install vulcano ./helm-chart-new -n vulcano-app \
 
 ## Verification
 
-### Check Deployment Status
+### Check deployment status
 
 ```bash
 # Check pods
@@ -229,32 +226,32 @@ kubectl get ingress -n vulcano-app
 kubectl logs deployment/vulcano -n vulcano-app
 ```
 
-### Verify MongoDB Connection
+### Verify MongoDB connection
 
 ```bash
 # Port-forward to MongoDB
 kubectl port-forward svc/mongodb 27017:27017 -n vulcano-app &
 
-# Test connection
+# Test the connection
 mongosh -u root -p bitte localhost:27017
 
-# Inside MongoDB shell
+# Inside the MongoDB shell
 > show dbs
 > use vulcano
-> db.collections
+> db.getCollectionNames()
 ```
 
-### Verify RabbitMQ Connection
+### Verify RabbitMQ connection
 
 ```bash
-# Access RabbitMQ Management UI
+# Access the RabbitMQ management UI
 kubectl port-forward svc/rabbitmq 15672:15672 -n vulcano-app &
 
-# Open browser to http://localhost:15672
+# Open http://localhost:15672 in your browser
 # Default credentials: vulcano / vulcano0479
 ```
 
-### Verify Vulcano Application
+### Verify the Vulcano application
 
 ```bash
 # Port-forward to Vulcano
@@ -266,7 +263,7 @@ curl http://localhost:8889/actuator/health
 
 ## Troubleshooting
 
-### Pods Not Starting
+### Pods not starting
 
 ```bash
 # Check pod status
@@ -275,57 +272,57 @@ kubectl get pods -n vulcano-app
 # Get detailed pod information
 kubectl describe pod -n vulcano-app <pod-name>
 
-# Check pod events
+# Check namespace events
 kubectl get events -n vulcano-app --sort-by='.lastTimestamp'
 ```
 
-### Memory/CPU Issues
+### Memory/CPU issues
 
 ```bash
 # Check resource usage
 kubectl top nodes
 kubectl top pods -n vulcano-app
 
-# Increase resources in chart
-helm upgrade vulcano ./helm-chart-new -n vulcano-app \
+# Increase resources in the chart
+helm upgrade vulcano . -n vulcano-app \
   --set 'vulcano.resources.limits.memory=8Gi'
 ```
 
-### MongoDB Connection Issues
+### MongoDB connection issues
 
 ```bash
 # Check MongoDB pod logs
 kubectl logs -n vulcano-app mongodb-0
 
-# Verify credentials
+# Inspect credentials
 kubectl get secret mongodb-credentials -n vulcano-app -o yaml
 
-# Test connection with mongodb client pod
+# Test the connection from an ephemeral MongoDB client pod
 kubectl run -it --rm mongodb-test --image=mongo:latest --restart=Never -- \
   mongosh -u root -p $(kubectl get secret mongodb-credentials -n vulcano-app -o jsonpath='{.data.password}' | base64 -d) mongodb:27017
 ```
 
-### RabbitMQ Connection Issues
+### RabbitMQ connection issues
 
 ```bash
 # Check RabbitMQ pod logs
 kubectl logs -n vulcano-app rabbitmq-0
 
-# Verify credentials
+# Inspect credentials
 kubectl get secret rabbitmq-credentials -n vulcano-app -o yaml
 
 # Check RabbitMQ status
 kubectl exec -it rabbitmq-0 -n vulcano-app -- rabbitmqctl status
 ```
 
-### Ingress Not Working
+### Ingress not working
 
 ```bash
 # Check ingress status
 kubectl get ingress -n vulcano-app
 kubectl describe ingress vulcano -n vulcano-app
 
-# Verify ingress controller
+# Verify the ingress controller
 kubectl get ingressclass
 kubectl get pods -n ingress-nginx
 
@@ -333,14 +330,14 @@ kubectl get pods -n ingress-nginx
 nslookup vulcano.example.com
 ```
 
-### PVC Not Binding
+### PVC not binding
 
 ```bash
 # Check PVC status
 kubectl get pvc -n vulcano-app
 kubectl describe pvc -n vulcano-app smb-vulcano-data
 
-# Check available storage classes
+# List available storage classes
 kubectl get storageclass
 
 # Check PV status
@@ -350,14 +347,14 @@ kubectl get pv
 ## Upgrading
 
 ```bash
-# Check current values
+# Inspect current values
 helm get values vulcano -n vulcano-app
 
 # Upgrade with new values
-helm upgrade vulcano ./helm-chart-new -n vulcano-app \
+helm upgrade vulcano . -n vulcano-app \
   -f updated-values.yaml
 
-# Verify upgrade
+# Watch the rollout
 kubectl rollout status deployment/vulcano -n vulcano-app
 ```
 
@@ -367,14 +364,14 @@ kubectl rollout status deployment/vulcano -n vulcano-app
 # Delete the Helm release
 helm uninstall vulcano -n vulcano-app
 
-# Keep namespace and PVCs for later use
+# Keeping the namespace and PVCs is fine for later reuse.
 # To remove everything:
 kubectl delete namespace vulcano-app
 ```
 
 ## Support
 
-For issues, questions, or contributions, please:
+For issues, questions, or contributions:
 
 1. Check the troubleshooting section above
 2. Review Kubernetes events: `kubectl get events -n vulcano-app`
@@ -383,46 +380,46 @@ For issues, questions, or contributions, please:
 
 ## Security Best Practices
 
-1. **Change Default Passwords**
+1. **Change default passwords**
    - MongoDB root password
    - RabbitMQ credentials
    - SMB credentials
 
 2. **Use TLS/SSL**
-   - **Option 1: Let's Encrypt** - Enable automatic certificate generation via cert-manager
+   - **Option 1: Let's Encrypt** — enable automatic certificate generation via cert-manager
      ```bash
      --set vulcano.ingress.tls.enabled=true \
      --set vulcano.ingress.tls.source="letsencrypt" \
      --set vulcano.ingress.tls.letsencrypt.enabled=true \
      --set vulcano.ingress.tls.letsencrypt.clusterIssuer="letsencrypt-prod"
      ```
-   - **Option 2: Existing Certificate** - Use pre-generated TLS certificate
+   - **Option 2: Existing certificate** — use a pre-generated TLS secret
      ```bash
-     # First create the TLS secret
+     # First, create the TLS secret
      kubectl create secret tls tls-vulcano-cert \
        --cert=path/to/tls.crt \
        --key=path/to/tls.key \
        -n vulcano-app
-     
-     # Then enable in Helm
+
+     # Then enable it in Helm
      --set vulcano.ingress.tls.enabled=true \
      --set vulcano.ingress.tls.source="existing" \
      --set vulcano.ingress.tls.existing.secretName="tls-vulcano-cert"
      ```
 
-3. **Implement Network Policies**
-   - Restrict inter-pod communication
+3. **Implement network policies**
+   - Restrict inter-pod traffic
    - Limit ingress/egress traffic
 
-4. **Use Secrets Manager**
-   - Integrate with Vault, Sealed Secrets, etc.
-   - Avoid storing secrets in Git
+4. **Use a secrets manager**
+   - Integrate with Vault, External Secrets Operator, Sealed Secrets, etc.
+   - Do not store secrets in Git
 
-5. **Regular Backups**
-   - Backup MongoDB data
-   - Backup RabbitMQ configuration
+5. **Regular backups**
+   - Back up MongoDB data
+   - Back up RabbitMQ configuration
 
-6. **Monitor and Audit**
+6. **Monitor and audit**
    - Enable logging
    - Monitor resource usage
    - Audit cluster access
