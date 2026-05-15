@@ -115,7 +115,7 @@ kubectl create namespace vulcano-app
 
 # Install the chart
 helm install vulcano rafaelhutter/vulcano \
-  --version 1.2.1 \
+  --version 1.2.2 \
   -n vulcano-app \
   -f custom-values.yaml
 ```
