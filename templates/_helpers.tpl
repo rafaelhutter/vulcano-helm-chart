@@ -144,6 +144,36 @@ chart works against apps using either binding.
 {{- end }}
 
 {{/*
+Deployment update strategy.
+
+Auto-derives based on the data PVCs:
+  - All volumes RWX  -> RollingUpdate (true zero-downtime upgrades)
+  - Any volume RWO   -> Recreate      (avoids Multi-Attach errors)
+
+A RollingUpdate against a ReadWriteOnce PVC fails when the new pod is
+scheduled on a different node than the old one — the volume can't be
+attached to two nodes simultaneously, the rollout gets stuck, and the
+new pod hangs in ContainerCreating until something manually intervenes.
+Recreate sidesteps the entire class of problem by terminating the old
+pod first.
+
+The user can force a value with `.Values.vulcano.strategy`.
+*/}}
+{{- define "vulcano.deploymentStrategy" -}}
+{{- if .Values.vulcano.strategy -}}
+{{ .Values.vulcano.strategy }}
+{{- else -}}
+{{- $allRWX := eq (.Values.vulcano.storage.accessModes | default "ReadWriteOnce") "ReadWriteMany" -}}
+{{- range .Values.vulcano.storage.extraMounts -}}
+  {{- if and (not .existingClaim) (ne (.accessModes | default "ReadWriteOnce") "ReadWriteMany") -}}
+    {{- $allRWX = false -}}
+  {{- end -}}
+{{- end -}}
+{{- if $allRWX -}}RollingUpdate{{- else -}}Recreate{{- end -}}
+{{- end -}}
+{{- end }}
+
+{{/*
 Docker config JSON for image pull secrets
 */}}
 {{- define "vulcano.dockerconfigjson" -}}
