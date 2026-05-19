@@ -9,6 +9,8 @@ metadata:
     app: vulcano
 spec:
   replicas: {{ .Values.vulcano.replicaCount }}
+  strategy:
+    type: {{ include "vulcano.deploymentStrategy" . }}
   selector:
     matchLabels:
       {{- include "vulcano.selectorLabels" . | nindent 6 }}

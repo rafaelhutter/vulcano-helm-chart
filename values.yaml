@@ -42,6 +42,13 @@ imagePullSecrets:
 vulcano:
   enabled: true
   replicaCount: 1
+  # -- Deployment update strategy. Leave empty for auto-detect (recommended):
+  # the chart picks "RollingUpdate" when ALL volumes are ReadWriteMany, and
+  # falls back to "Recreate" if any volume is ReadWriteOnce – otherwise a
+  # rolling update would hit a Multi-Attach error when the new pod is
+  # scheduled on a different node than the old one. Set explicitly to
+  # "Recreate" or "RollingUpdate" to override.
+  strategy: ""
   service:
     # -- Service type (ClusterIP, NodePort, LoadBalancer)
     type: ClusterIP

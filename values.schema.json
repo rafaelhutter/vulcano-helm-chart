@@ -52,6 +52,7 @@
       "properties": {
         "enabled": { "type": "boolean" },
         "replicaCount": { "type": "integer", "minimum": 1 },
+        "strategy": { "type": "string", "enum": ["", "Recreate", "RollingUpdate"] },
         "service": {
           "type": "object",
           "properties": {
