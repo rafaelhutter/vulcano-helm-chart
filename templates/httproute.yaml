@@ -1,0 +1,50 @@
+{{- if and .Values.vulcano.enabled .Values.vulcano.gateway.enabled }}
+# Gateway API route – the forward-looking alternative to the legacy Ingress
+# (ingress-nginx is retired; see values.yaml `vulcano.ingress`).
+# This route attaches to a Gateway you provision cluster-side; the Gateway owns
+# the listeners and TLS, this chart only owns the application route.
+# Requires the Gateway API CRDs (gateway.networking.k8s.io/v1).
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: vulcano
+  namespace: {{ include "vulcano.namespace" . }}
+  labels:
+    {{- include "vulcano.labels" . | nindent 4 }}
+    app: vulcano
+spec:
+  parentRefs:
+    - name: {{ required "vulcano.gateway.parentRef.name is required when vulcano.gateway.enabled=true" .Values.vulcano.gateway.parentRef.name }}
+      {{- if .Values.vulcano.gateway.parentRef.namespace }}
+      namespace: {{ .Values.vulcano.gateway.parentRef.namespace }}
+      {{- end }}
+      {{- if .Values.vulcano.gateway.parentRef.sectionName }}
+      sectionName: {{ .Values.vulcano.gateway.parentRef.sectionName }}
+      {{- end }}
+  {{- $hostnames := .Values.vulcano.gateway.hostnames | default .Values.vulcano.ingress.hosts }}
+  {{- if $hostnames }}
+  hostnames:
+    {{- range $hostnames }}
+    - {{ . | quote }}
+    {{- end }}
+  {{- end }}
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: {{ .Values.vulcano.gateway.path | default "/" | quote }}
+      {{- with .Values.vulcano.gateway.timeouts }}
+      {{- if or .request .backendRequest }}
+      timeouts:
+        {{- with .request }}
+        request: {{ . | quote }}
+        {{- end }}
+        {{- with .backendRequest }}
+        backendRequest: {{ . | quote }}
+        {{- end }}
+      {{- end }}
+      {{- end }}
+      backendRefs:
+        - name: vulcano
+          port: {{ .Values.vulcano.service.port }}
+{{- end }}
