@@ -24,7 +24,10 @@ Before installing, ensure you have:
 
 - CSI SMB Driver (for SMB mounts)
 - cert-manager (for TLS certificates)
-- ingress-nginx (for ingress)
+- An ingress controller (for ingress). **Note:** ingress-nginx is retired (EOL March 2026,
+  no further security patches — https://kubernetes.io/blog/2025/11/11/ingress-nginx-retirement/).
+  For new clusters prefer the Gateway API (set `vulcano.gateway.enabled=true`; requires the
+  Gateway API CRDs + a Gateway controller) or a maintained alternative Ingress controller.
 
 ## Quick Start
 
@@ -115,7 +118,7 @@ kubectl create namespace vulcano-app
 
 # Install the chart
 helm install vulcano rafaelhutter/vulcano \
-  --version 1.2.4 \
+  --version 1.3.0 \
   -n vulcano-app \
   -f custom-values.yaml
 ```
@@ -143,7 +146,7 @@ helm install vulcano . \
 
 ```bash
 helm install vulcano . -n vulcano-app \
-  --set images.vulcano.tag="1.9.13"
+  --set images.vulcano.tag="1.9.31"
 ```
 
 #### 2. Configure ingress with Let's Encrypt

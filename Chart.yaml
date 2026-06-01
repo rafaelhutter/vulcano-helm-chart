@@ -2,8 +2,8 @@ apiVersion: v2
 name: vulcano
 description: Vulcano - Complete application deployment with MongoDB, RabbitMQ, and optional CSI driver
 type: application
-version: 1.2.5
-appVersion: "1.9.13"
+version: 1.3.0
+appVersion: "1.9.31"
 home: https://github.com/rafaelhutter/vulcano-helm-chart
 sources:
   - https://github.com/rafaelhutter/vulcano-helm-chart

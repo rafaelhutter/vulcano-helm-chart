@@ -17,7 +17,7 @@ images:
     # -- Docker repository for Vulcano application
     repository: "moovit/vulcano"
     # -- Docker image tag
-    tag: "1.9.13"
+    tag: "1.9.31"
     # -- Image pull policy
     pullPolicy: "IfNotPresent"
 
@@ -58,8 +58,14 @@ vulcano:
     targetPort: 8889
 
   ingress:
-    # -- Enable ingress
+    # -- Enable ingress (legacy Ingress API). See the `gateway` block below for
+    # the Gateway API alternative.
     enabled: true
+    # ⚠️ ingress-nginx is RETIRED: upstream maintenance halted in March 2026 — no
+    # further releases, bug-fixes, or security patches. Existing installs keep
+    # working, but plan a migration. Options: the opt-in Gateway API support in the
+    # `vulcano.gateway` block below, or a maintained alternative Ingress controller.
+    # https://kubernetes.io/blog/2025/11/11/ingress-nginx-retirement/
     # -- Ingress class name
     className: nginx
     annotations:
@@ -98,6 +104,39 @@ vulcano:
       # For existing certificate (when source=existing)
       existing:
         secretName: "tls-vulcano-cert"
+
+  # Gateway API routing – the forward-looking alternative to the legacy Ingress
+  # above (ingress-nginx is retired, see the note there). Disabled by default;
+  # the Ingress remains the default path. When enabled, the chart renders an
+  # HTTPRoute that attaches to a Gateway you provision cluster-side (with its
+  # own TLS listener) – the idiomatic Gateway API split of concerns.
+  # Requires the Gateway API CRDs (gateway.networking.k8s.io/v1) and a Gateway
+  # controller (e.g. Envoy Gateway, Istio, Cilium, NGINX Gateway Fabric).
+  gateway:
+    # -- Enable Gateway API routing (renders an HTTPRoute). Mutually independent
+    # from `ingress.enabled` – do not enable both for the same host.
+    enabled: false
+    # -- Reference to the existing Gateway this route attaches to.
+    parentRef:
+      # -- Name of the Gateway (required when gateway.enabled=true)
+      name: ""
+      # -- Namespace of the Gateway (defaults to the release namespace when empty)
+      namespace: ""
+      # -- Listener section name on the Gateway (optional; e.g. "https")
+      sectionName: ""
+    # -- Hostnames for the route. Falls back to `vulcano.ingress.hosts` when empty.
+    hostnames: []
+    # -- Path prefix to match
+    path: "/"
+    # -- Request timeouts (Gateway API v1) – generous defaults for slow renders
+    # and large /hires downloads, mirroring the legacy nginx proxy timeouts.
+    timeouts:
+      request: "3600s"
+      backendRequest: "3600s"
+    # NOTE: WebSocket upgrades (/ws) pass through natively on conformant
+    # gateways. Request body-size limits and response buffering are
+    # controller-specific policy (e.g. a BackendTrafficPolicy / ClientTrafficPolicy),
+    # not part of the portable HTTPRoute spec – configure them on your Gateway.
 
   resources:
     limits:
@@ -226,6 +265,10 @@ vulcano:
       # -- Comma-separated list of named output formats produced by the
       # graphics generator (e.g. social-media renditions). Format:
       # "Name1=WxH,Name2=WxH". Empty disables custom format generation.
+      # Used by the Packaging Machine (Beta, Vulcano 1.9.31+). NOTE: the
+      # Packaging Machine also requires the reframer binary on every render
+      # node (`vulcano.media.reframer`); that is a per-render-node setting and
+      # is out of scope for this server chart.
       formats: "Facebook=1080x1920,Instagram=1080x1080"
 
 # ---------------------------------------------------------------------------
@@ -522,6 +565,30 @@ management:
       enabled: "true"
       # -- Show detailed information in readiness state health checks
       showDetails: "always"
+  # OpenTelemetry (OTLP) export (Vulcano 1.9.31+). Exports distributed traces,
+  # metrics, and structured logs to an OTLP collector (OpenTelemetry Collector,
+  # Grafana/Tempo, Jaeger, etc.). All signals are DISABLED by default; enable
+  # per signal and point each at your collector. Endpoints default to a local
+  # collector on :4318. Each leaf notes the exact Spring property it maps to.
+  otlp:
+    tracing:
+      # -- Enable trace export. → management.tracing.export.enabled
+      enabled: "false"
+      # -- OTLP traces endpoint. → management.opentelemetry.tracing.export.otlp.endpoint
+      endpoint: "http://localhost:4318/v1/traces"
+      # -- Fraction of traces to sample (0.0–1.0; 0.1 = 10% for prod, 1.0 for
+      # dev). → management.tracing.sampling.probability
+      samplingProbability: "0.1"
+    metrics:
+      # -- Enable metrics export. → management.otlp.metrics.export.enabled
+      enabled: "false"
+      # -- OTLP metrics endpoint. → management.otlp.metrics.export.url
+      endpoint: "http://localhost:4318/v1/metrics"
+    logging:
+      # -- Enable log export. → management.logging.export.enabled
+      enabled: "false"
+      # -- OTLP logs endpoint. → management.opentelemetry.logging.export.otlp.endpoint
+      endpoint: "http://localhost:4318/v1/logs"
 
 # Spring Framework Configuration
 spring:
@@ -581,6 +648,16 @@ folders:
   thumbnails: "/data/thumbs"
   # -- Client-side path mapping for template files
   templatesClient: ""
+  # -- Active fonts folder for the Font Manager (Vulcano 1.9.31+). Holds fonts
+  # that are active and distributed to render nodes; must sit on the shared PVC.
+  # Leave empty to derive `<vulcano.storage.mountPath>/fonts` automatically, so it
+  # follows the mount for every deployment without a per-environment override.
+  # → vulcano.folderscanner.fontFolder
+  fonts: ""
+  # -- Inactive (deactivated) fonts folder, backend-managed and not used in
+  # rendering. Empty derives `<vulcano.storage.mountPath>/fonts_inactive`.
+  # → vulcano.folderscanner.fontInactiveFolder
+  fontsInactive: ""
 
 # Vulcano Scanner Configuration
 folderScanner:
@@ -744,6 +821,10 @@ features:
   afxRenderOnDemand: "false"
   # -- If enabled, users can both add an asset to a project and mark it as 'Preparing'
   afxRenderOnDemandExtended: "false"
+  # -- Comma-separated list of After Effects render templates selectable per
+  # project in preferences (Vulcano 1.9.31+). Empty falls back to the global
+  # template. → vulcano.afx.render.templates
+  afxRenderTemplates: ""
   # -- Enable cloud-based rendering mode
   cloudmode: "false"
 
@@ -823,6 +904,12 @@ project:
     ownerOnly: "true"
 
 # Authentication Configuration
+# Admin access (Vulcano 1.9.31+): in addition to the `adminUsers` list below,
+# the UI grants admin to any user whose login token carries the role
+# `vulcano-admin` — a Keycloak realm role or `vulcano` client role, or a
+# Microsoft Entra ID (Azure AD) App Role of the same value. The role is read
+# from the token at login, so a role change requires the user to re-login.
+# This is configured in the identity provider; no chart setting is required.
 auth:
   # -- Authentication mode (MICROSOFT, KEYCLOAK, HELMUT, BID)
   mode: "MICROSOFT"
@@ -868,6 +955,11 @@ nodeSelector: {}
 tolerations: []
 # -- Affinity rules for pod scheduling
 affinity: {}
+# -- Static /etc/hosts entries injected into the Vulcano pod. Useful when the
+# pod must reach a hostname that the cluster cannot resolve to an internal
+# address (e.g. a self-hosted Keycloak whose public hostname does not NAT-loop
+# back into the cluster). Each item: { ip: <addr>, hostnames: [<host>, ...] }.
+hostAliases: []
 
 # -- Extra Kubernetes objects to deploy alongside the chart.
 # Useful for BitwardenSecrets, custom PVCs, StorageClasses, or any other resource.

@@ -107,6 +107,47 @@
             }
           }
         },
+        "gateway": {
+          "type": "object",
+          "description": "Opt-in Gateway API routing (renders an HTTPRoute). Alternative to the legacy Ingress.",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "parentRef": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "namespace": { "type": "string" },
+                "sectionName": { "type": "string" }
+              }
+            },
+            "hostnames": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "path": { "type": "string" },
+            "timeouts": {
+              "type": "object",
+              "properties": {
+                "request": { "type": "string" },
+                "backendRequest": { "type": "string" }
+              }
+            }
+          },
+          "if": {
+            "properties": { "enabled": { "const": true } }
+          },
+          "then": {
+            "properties": {
+              "parentRef": {
+                "required": ["name"],
+                "properties": {
+                  "name": { "minLength": 1 }
+                }
+              }
+            },
+            "required": ["parentRef"]
+          }
+        },
         "resources": { "$ref": "#/$defs/resourceRequirements" },
         "livenessProbe": { "$ref": "#/$defs/probeConfig" },
         "readinessProbe": { "$ref": "#/$defs/probeConfig" },
@@ -343,7 +384,9 @@
           }
         },
         "proxy": { "type": "string" },
-        "thumbnails": { "type": "string" }
+        "thumbnails": { "type": "string" },
+        "fonts": { "type": "string", "description": "Active fonts folder (Font Manager) → vulcano.folderscanner.fontFolder" },
+        "fontsInactive": { "type": "string", "description": "Inactive fonts folder (Font Manager) → vulcano.folderscanner.fontInactiveFolder" }
       }
     },
 
@@ -368,6 +411,7 @@
         "afxRenderMassJobLimit": { "type": "string" },
         "afxRenderOnDemand": { "type": "string", "enum": ["true", "false"] },
         "afxRenderOnDemandExtended": { "type": "string", "enum": ["true", "false"] },
+        "afxRenderTemplates": { "type": "string" },
         "cloudmode": { "type": "string", "enum": ["true", "false"] },
         "ignoreMogrt": { "type": "string", "enum": ["true", "false"] },
         "maxNameLength": { "type": "string" },
@@ -440,6 +484,7 @@
     "nodeSelector": { "type": "object" },
     "tolerations": { "type": "array" },
     "affinity": { "type": "object" },
+    "hostAliases": { "type": "array" },
     "extraObjects": { "type": "array" },
 
     "integrations": {

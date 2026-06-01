@@ -1,6 +1,6 @@
 # vulcano
 
-![Version: 1.2.4](https://img.shields.io/badge/Version-1.2.4-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.9.13](https://img.shields.io/badge/AppVersion-1.9.13-informational?style=flat-square)
+![Version: 1.3.0](https://img.shields.io/badge/Version-1.3.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.9.31](https://img.shields.io/badge/AppVersion-1.9.31-informational?style=flat-square)
 
 Vulcano - Complete application deployment with MongoDB, RabbitMQ, and optional CSI driver
 
@@ -228,7 +228,7 @@ cleanly:
 
 ```bash
 helm upgrade --install vulcano vulcano-helm-chart/vulcano \
-  --version 1.2.4 -n vulcano-app \
+  --version 1.3.0 -n vulcano-app \
   -f values.yaml -f values.secret.yaml \
   --dry-run=server
 ```
@@ -418,7 +418,15 @@ Repeat Step 2 for every additional Vulcano instance, changing `global.namespace`
 >
 > For automatic TLS via cert-manager, ports **80 and 443** must be reachable from the internet at the
 > domain's public IP. Ensure your router forwards both ports to at least one cluster node running the
-> nginx ingress controller.
+> ingress controller.
+
+> **⚠️ ingress-nginx is retired (EOL March 2026)**
+>
+> Upstream [ingress-nginx maintenance halted in March 2026](https://kubernetes.io/blog/2025/11/11/ingress-nginx-retirement/)
+> — no further releases, bug-fixes, or security patches. The chart still defaults to
+> `vulcano.ingress.className: nginx` and existing installs keep working, but plan a migration:
+> enable the **opt-in Gateway API** support (`vulcano.gateway.enabled=true` + a `parentRef`,
+> which renders an `HTTPRoute`), or switch to a maintained alternative Ingress controller.
 
 ### Extra Objects
 
@@ -614,6 +622,7 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | features.afxRenderOnDemand | string | `"false"` | Enable on-demand rendering capabilities |
 | features.afxRenderOnDemandExtended | string | `"false"` | If enabled, users can both add an asset to a project and mark it as 'Preparing' |
 | features.afxRenderPreview | string | `"true"` | Enable preview rendering functionality in AfxRenderer |
+| features.afxRenderTemplates | string | `""` | Comma-separated list of After Effects render templates selectable per project in preferences (Vulcano 1.9.31+). Empty falls back to the global template. → vulcano.afx.render.templates |
 | features.cloudmode | string | `"false"` | Enable cloud-based rendering mode |
 | features.ignoreMogrt | string | `"false"` | Ignore MOGRT files during template scanning and processing |
 | features.logThirdPartyRequests | string | `"false"` | Enable detailed logging of all HTTP requests made to external APIs |
@@ -626,6 +635,8 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | folderScanner.startD3 | string | `"false"` | Enable Delta Tre sports data integration |
 | folderScanner.startWatcher | string | `"true"` | Enable automatic file system monitoring to detect changes in template folders |
 | folders.customCertificatesSecret | string | `""` | Name of a Kubernetes Secret whose keys are mounted as certificate files into /etc/certs inside the Vulcano pod. Each key in the Secret becomes a file at /etc/certs/<key>. Leave empty to disable the certificate mount. |
+| folders.fonts | string | `""` | Active fonts folder for the Font Manager (Vulcano 1.9.31+). Empty derives `<vulcano.storage.mountPath>/fonts` so it follows the PVC mount. → vulcano.folderscanner.fontFolder |
+| folders.fontsInactive | string | `""` | Inactive (deactivated) fonts folder, backend-managed. Empty derives `<vulcano.storage.mountPath>/fonts_inactive`. → vulcano.folderscanner.fontInactiveFolder |
 | folders.media.clientFolder | string | `"/data/highres"` | Client-side path mapping for media files in path replacement operations |
 | folders.media.extension | string | `".mov"` | Comma-separated list of allowed media file extensions for processing |
 | folders.media.folder | string | `"/data/highres"` | Root directory path where generated high-resolution media files are stored |
@@ -647,10 +658,10 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | housekeeping.maxAge | string | `"14"` | Maximum age in days for housekeeping items before they are automatically cleaned up |
 | imagePullSecrets | object | `{"enabled":true,"secrets":[{"name":"docker-io"}]}` | Image Pull Secrets configuration |
 | imagePullSecrets.enabled | bool | `true` | Enable image pull secrets |
-| images | object | `{"dflconnector":{"pullPolicy":"IfNotPresent","repository":"moovit/de.moovit.vulcano-dfl-connector","tag":"0.2.20"},"filetransfer":{"pullPolicy":"IfNotPresent","repository":"moovit/vulcano-filetransfer","tag":"0.0.10"},"vulcano":{"pullPolicy":"IfNotPresent","repository":"moovit/vulcano","tag":"1.9.13"}}` | Docker Image Configuration |
+| images | object | `{"dflconnector":{"pullPolicy":"IfNotPresent","repository":"moovit/de.moovit.vulcano-dfl-connector","tag":"0.2.20"},"filetransfer":{"pullPolicy":"IfNotPresent","repository":"moovit/vulcano-filetransfer","tag":"0.0.10"},"vulcano":{"pullPolicy":"IfNotPresent","repository":"moovit/vulcano","tag":"1.9.31"}}` | Docker Image Configuration |
 | images.vulcano.pullPolicy | string | `"IfNotPresent"` | Image pull policy |
 | images.vulcano.repository | string | `"moovit/vulcano"` | Docker repository for Vulcano application |
-| images.vulcano.tag | string | `"1.9.13"` | Docker image tag |
+| images.vulcano.tag | string | `"1.9.31"` | Docker image tag |
 | integrations | object | `{"adobe":{"apiKey":"CCHomeWeb1","clientId":"","clientToken":"","dumpFilepath":"","enabled":false,"librariesIgnore":"\"Library to Ignore\"","scan":"false","secret":""},"helmut":{"apiToken":"","baseUrl":"","clientId":"","clientSecret":"","cosmoBaseBreadcrumb":"","cosmoMappingDest":"","cosmoMappingSrc":"","cosmoSync":"false","existingPasswordKey":"helmut-client-secret","existingSecret":"","logRequest":"false","pageSize":"50"},"ndr":{"bidLookupUrl":"","existingPasswordKey":"ndr-vdb-password","existingSecret":"","vdbPassword":"","vdbServer":"","vdbSimulate":"false","vdbUsername":"","wikiUrl":"","wildcardBid":""},"octopus":{"api":"","clientDelayInMs":"5000","enabled":false,"existingPasswordKey":"octopus-password","existingSecret":"","password":"","startClient":"false","username":""},"vidispine":{"baseUrl":"","baseUrlAuth":"","clientId":"","clientSecret":"","defaultLocation":"","existingPasswordKey":"vidispine-client-secret","existingSecret":"","locationValuesUrl":"","storage":"","workflow":"","workflowMogrt":"","workflowVersion":"","workflowVersionMogrt":""}}` | ------------------------------------------------------------------------- |
 | integrations.adobe | object | `{"apiKey":"CCHomeWeb1","clientId":"","clientToken":"","dumpFilepath":"","enabled":false,"librariesIgnore":"\"Library to Ignore\"","scan":"false","secret":""}` | Adobe Creative Cloud Libraries integration |
 | integrations.adobe.apiKey | string | `"CCHomeWeb1"` | Adobe API Key for accessing Adobe Creative Cloud services |
@@ -724,6 +735,13 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | management.metrics.distribution.slo | string | `"50ms, 100ms, 200ms, 300ms, 500ms, 1s"` |  |
 | management.metrics.enable.all | string | `"true"` |  |
 | management.metrics.tags.application | string | `"vulcano-backend"` |  |
+| management.otlp.logging.enabled | string | `"false"` | Enable log export (Vulcano 1.9.31+). → management.logging.export.enabled |
+| management.otlp.logging.endpoint | string | `"http://localhost:4318/v1/logs"` | OTLP logs endpoint. → management.opentelemetry.logging.export.otlp.endpoint |
+| management.otlp.metrics.enabled | string | `"false"` | Enable metrics export (Vulcano 1.9.31+). → management.otlp.metrics.export.enabled |
+| management.otlp.metrics.endpoint | string | `"http://localhost:4318/v1/metrics"` | OTLP metrics endpoint. → management.otlp.metrics.export.url |
+| management.otlp.tracing.enabled | string | `"false"` | Enable trace export (Vulcano 1.9.31+). → management.tracing.export.enabled |
+| management.otlp.tracing.endpoint | string | `"http://localhost:4318/v1/traces"` | OTLP traces endpoint. → management.opentelemetry.tracing.export.otlp.endpoint |
+| management.otlp.tracing.samplingProbability | string | `"0.1"` | Fraction of traces to sample (0.0–1.0). → management.tracing.sampling.probability |
 | management.prometheus.metrics.export.enabled | string | `"true"` |  |
 | mongodb | object | `{"auth":{"existingSecret":"","existingSecretPasswordKey":"mongodb-root-password","rootPassword":"bitte","rootUsername":"root"},"database":"vulcano","enabled":true,"externalHost":"","fullnameOverride":"mongodb","metrics":{"enabled":false},"persistence":{"enabled":true,"size":"50Gi","storageClassName":""},"replicaCount":3,"resources":{"limits":{"cpu":"2000m","memory":"4Gi"},"requests":{"cpu":"1000m","memory":"2Gi"}}}` | MongoDB Configuration |
 | mongodb.auth.existingSecret | string | `""` | Name of an existing Kubernetes Secret containing MongoDB credentials. When set, rootPassword is ignored and the chart will NOT create a mongodb-credentials secret. |
@@ -814,6 +832,14 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | vulcano.folder.createUserFolder | string | `"false"` | Enable creation of user-specific folders for organizing generated assets |
 | vulcano.folder.globalParent | string | `""` | Global parent folder path component inserted in generated asset folder structure when user folders are enabled |
 | vulcano.frontend.enableTimecodeForAssets | string | `"false"` | If enabled, a Timecode input will appear in the PreferenceView for assets |
+| vulcano.gateway.enabled | bool | `false` | Enable Gateway API routing (renders an HTTPRoute). Mutually independent from `ingress.enabled` – do not enable both for the same host. |
+| vulcano.gateway.hostnames | list | `[]` | Hostnames for the route. Falls back to `vulcano.ingress.hosts` when empty. |
+| vulcano.gateway.parentRef.name | string | `""` | Name of the Gateway (required when gateway.enabled=true) |
+| vulcano.gateway.parentRef.namespace | string | `""` | Namespace of the Gateway (defaults to the release namespace when empty) |
+| vulcano.gateway.parentRef.sectionName | string | `""` | Listener section name on the Gateway (optional; e.g. "https") |
+| vulcano.gateway.path | string | `"/"` | Path prefix to match |
+| vulcano.gateway.timeouts.backendRequest | string | `"3600s"` | Gateway API v1 backend request timeout |
+| vulcano.gateway.timeouts.request | string | `"3600s"` | Gateway API v1 request timeout (generous for slow renders / large downloads) |
 | vulcano.home.base | string | `"/home"` |  |
 | vulcano.ingress.annotations."nginx.ingress.kubernetes.io/proxy-body-size" | string | `"500m"` |  |
 | vulcano.ingress.annotations."nginx.ingress.kubernetes.io/proxy-read-timeout" | string | `"3600"` |  |

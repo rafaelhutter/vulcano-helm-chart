@@ -10,7 +10,7 @@ global:
 images:
   vulcano:
     repository: "moovit/vulcano"
-    tag: "1.9.13"
+    tag: "1.9.31"
     pullPolicy: "Always"
 
 # Image Pull Secrets
