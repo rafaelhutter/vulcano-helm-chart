@@ -32,6 +32,15 @@ data:
   management.health.readinessstate.show-details: {{ .Values.management.health.readinessstate.showDetails | default "always" | quote }}
   management.endpoint.health.group.readiness.include: {{ .Values.management.endpoint.health.group.readiness.include | default "rabbit,diskSpace,mongo,ping" | quote }}
 
+  # OpenTelemetry (OTLP) export (Vulcano 1.9.31+). All signals disabled by default.
+  management.tracing.export.enabled: {{ .Values.management.otlp.tracing.enabled | default "false" | quote }}
+  management.opentelemetry.tracing.export.otlp.endpoint: {{ .Values.management.otlp.tracing.endpoint | default "http://localhost:4318/v1/traces" | quote }}
+  management.tracing.sampling.probability: {{ .Values.management.otlp.tracing.samplingProbability | default "0.1" | quote }}
+  management.otlp.metrics.export.enabled: {{ .Values.management.otlp.metrics.enabled | default "false" | quote }}
+  management.otlp.metrics.export.url: {{ .Values.management.otlp.metrics.endpoint | default "http://localhost:4318/v1/metrics" | quote }}
+  management.logging.export.enabled: {{ .Values.management.otlp.logging.enabled | default "false" | quote }}
+  management.opentelemetry.logging.export.otlp.endpoint: {{ .Values.management.otlp.logging.endpoint | default "http://localhost:4318/v1/logs" | quote }}
+
   # Spring Framework Configuration
   spring.mvc.pathmatch.matching-strategy: {{ .Values.spring.mvc.pathmatch.matchingStrategy | default "ANT_PATH_MATCHER" | quote }}
   spring.jackson.mapper.accept-case-insensitive-enums: {{ .Values.spring.jackson.mapper.acceptCaseInsensitiveEnums | default "true" | quote }}
@@ -62,6 +71,11 @@ data:
   vulcano.folder.deletedhires: {{ .Values.folders.output.deletedFolder | quote }}
   vulcano.folderscanner.proxyFolder: {{ .Values.folders.proxy | quote }}
   vulcano.folderscanner.thumbFolder: {{ .Values.folders.thumbnails | quote }}
+  # Font Manager (Vulcano 1.9.31+) – active/inactive font folders. The default
+  # derives from the PVC mountPath so fonts always land on shared storage,
+  # following whatever path each deployment mounts (no per-env override needed).
+  vulcano.folderscanner.fontFolder: {{ .Values.folders.fonts | default (printf "%s/fonts" .Values.vulcano.storage.mountPath) | quote }}
+  vulcano.folderscanner.fontInactiveFolder: {{ .Values.folders.fontsInactive | default (printf "%s/fonts_inactive" .Values.vulcano.storage.mountPath) | quote }}
 
   # Scanner Configuration
   vulcano.folderscanner.startD3: {{ .Values.folderScanner.startD3 | quote }}
@@ -81,6 +95,7 @@ data:
   vulcano.afx.render.mass.job.limit: {{ .Values.features.afxRenderMassJobLimit | default "-1" | quote }}
   vulcano.afx.render.on.demand: {{ .Values.features.afxRenderOnDemand | default "false" | quote }}
   vulcano.afx.render.on.demand.extended: {{ .Values.features.afxRenderOnDemandExtended | default "false" | quote }}
+  vulcano.afx.render.templates: {{ .Values.features.afxRenderTemplates | default "" | quote }}
   {{- if .Values.features.cloudmode }}
   vulcano.cloudmode: {{ .Values.features.cloudmode | quote }}
   {{- end }}

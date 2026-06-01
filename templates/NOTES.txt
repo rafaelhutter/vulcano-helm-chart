@@ -1,0 +1,40 @@
+Vulcano {{ .Chart.AppVersion }} has been deployed (chart {{ .Chart.Name }}-{{ .Chart.Version }}).
+
+  Release:   {{ .Release.Name }}
+  Namespace: {{ include "vulcano.namespace" . }}
+
+{{- if .Values.vulcano.enabled }}
+
+Reach the backend:
+{{- if and .Values.vulcano.ingress.enabled .Values.vulcano.ingress.hosts }}
+  {{- $scheme := ternary "https" "http" .Values.vulcano.ingress.tls.enabled }}
+  {{- range .Values.vulcano.ingress.hosts }}
+  - {{ $scheme }}://{{ . }}{{ $.Values.vulcano.ingress.path }}   (Ingress)
+  {{- end }}
+{{- end }}
+{{- if .Values.vulcano.gateway.enabled }}
+  {{- $ghosts := .Values.vulcano.gateway.hostnames | default .Values.vulcano.ingress.hosts }}
+  {{- range $ghosts }}
+  - {{ . }}{{ $.Values.vulcano.gateway.path }}   (Gateway API / HTTPRoute → {{ $.Values.vulcano.gateway.parentRef.name }})
+  {{- end }}
+{{- end }}
+{{- if not (or .Values.vulcano.ingress.enabled .Values.vulcano.gateway.enabled) }}
+  - No Ingress or Gateway is enabled. Port-forward to test:
+      kubectl -n {{ include "vulcano.namespace" . }} port-forward svc/vulcano {{ .Values.vulcano.service.port }}:{{ .Values.vulcano.service.port }}
+{{- end }}
+{{- end }}
+
+{{- if and .Values.vulcano.ingress.enabled (eq (.Values.vulcano.ingress.className | toString) "nginx") }}
+
+⚠️  INGRESS-NGINX IS RETIRED
+    You are using ingressClassName "nginx". Upstream ingress-nginx maintenance
+    halted in March 2026 — there are no further releases, bug-fixes, or security
+    patches. Your install keeps working, but you should plan a migration.
+
+    Options:
+      • Gateway API — set `vulcano.gateway.enabled=true` (and a `parentRef`);
+        this chart ships an HTTPRoute for it.
+      • A maintained alternative Ingress controller.
+
+    Details: https://kubernetes.io/blog/2025/11/11/ingress-nginx-retirement/
+{{- end }}
