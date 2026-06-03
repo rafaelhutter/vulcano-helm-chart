@@ -1,6 +1,6 @@
 # vulcano
 
-![Version: 1.3.0](https://img.shields.io/badge/Version-1.3.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.9.31](https://img.shields.io/badge/AppVersion-1.9.31-informational?style=flat-square)
+![Version: 1.4.0](https://img.shields.io/badge/Version-1.4.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.9.31](https://img.shields.io/badge/AppVersion-1.9.31-informational?style=flat-square)
 
 Vulcano - Complete application deployment with MongoDB, RabbitMQ, and optional CSI driver
 
@@ -217,6 +217,68 @@ kubectl cp <ns>/mongodb-0:/tmp/mongo-${STAMP}.gz ./mongo-${STAMP}.gz
 To restore later, copy the archive back to a Mongo pod and run
 `mongorestore --gzip --archive=/tmp/mongo-...gz --drop --db <database> ...`
 against the new instance.
+
+### Automated MongoDB Backups (S3)
+
+For off-cluster backups the chart ships an optional `mongoBackup` component: a
+long-running **Deployment** of
+[`moovit/mongodb-s3-backup`](https://hub.docker.com/r/moovit/mongodb-s3-backup)
+that `mongodump`s MongoDB and uploads the archive to an S3 bucket, pruning old
+backups beyond `retainCount`. The image is a backup **daemon** — it takes a
+backup on start (`INIT_BACKUP`) and then repeats on its own internal ~24h timer
+(this is the same way it runs under Docker Swarm with `restart: always`).
+
+Enable it in the release that **owns** the MongoDB you want to back up — i.e.
+the shared-services release (`vulcano-common`) for the shared instance, or a
+per-customer release that runs its own MongoDB. The MongoDB host, user and
+password are derived automatically from the chart's `mongodb.*` config (the
+password is read from the live `mongodb` secret), so you only supply the S3
+destination and AWS credentials:
+
+```yaml
+mongoBackup:
+  enabled: true
+  retainCount: 30
+  s3:
+    bucket: "my-vulcano-backups"
+    backupFolder: "surfplanet/shared-vulcano"
+    # AWS keys belong in your gitignored secret values file:
+    accessKeyId: "<AWS_ACCESS_KEY_ID>"
+    secretAccessKey: "<AWS_SECRET_ACCESS_KEY>"
+```
+
+Already have the AWS keys in a Secret (e.g. via Bitwarden / `extraObjects`)?
+Point at it instead and the chart won't create its own:
+
+```yaml
+mongoBackup:
+  enabled: true
+  s3:
+    bucket: "my-vulcano-backups"
+    backupFolder: "surfplanet/shared-vulcano"
+    existingSecret: "my-aws-secret"            # keys: AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY
+```
+
+S3-compatible stores (MinIO, Wasabi, …) work via `s3.endpointUrl` and
+`s3.region`. To dump a single database set `database:`; to keep the full
+cluster dump, leave it empty.
+
+> **Private image / pull secrets:** `vulcano-common` ships with
+> `imagePullSecrets` disabled. If the backup image is not anonymously pullable,
+> enable image pull secrets in that release so the backup pod can pull it.
+
+**Verify / run a backup on demand:**
+
+```bash
+kubectl get deploy mongo-backup -n <ns>
+kubectl logs -f deploy/mongo-backup -n <ns>   # expect: dump + S3 upload OK
+# Force an extra backup now (the daemon backs up on start):
+kubectl rollout restart deploy/mongo-backup -n <ns>
+```
+
+**Restore** from S3 by running the same image with `INIT_RESTORE=1` (it pulls
+the latest archive from `BUCKET`/`BACKUP_FOLDER` and `mongorestore`s it). See
+the operational runbook in `AI_AGENT_GUIDE.md` for the exact one-off Job.
 
 ### Dry-run pre-flight
 
@@ -448,38 +510,23 @@ extraObjects:
       organizationId: "<org-id>"
       secretName: bw-rabbitmq-secrets
       map:
-        - bwSecretId: <uuid>
-          secretKeyName: "bw-rabbitmq-password"
-        - bwSecretId: <uuid>
-          secretKeyName: "bw-rabbitmq-erlang-cookie"
-      authToken:
-        secretName: bw-auth-token
-        secretKey: token
-
-  # Custom PVC – e.g. CSI SMB or any other storage class
+        password: "bw-rabbitmq-password"
+  # Custom PVC with CSI SMB
   - apiVersion: v1
     kind: PersistentVolumeClaim
     metadata:
-      name: vulcano-data-smb
+      name: smb-vulcano-data
       namespace: "{{ .Values.global.namespace }}"
-      annotations:
-        helm.sh/resource-policy: keep
     spec:
       accessModes:
         - ReadWriteMany
-      storageClassName: "sp-tanzu2025-sms"
+      storageClassName: smb
       resources:
         requests:
-          storage: 8Gi
+          storage: 1Ti
 ```
 
-Then reference the PVC:
-
-```yaml
-vulcano:
-  storage:
-    existingClaim: "vulcano-data-smb"
-```
+------
 
 ### Persistent Storage
 
@@ -635,8 +682,8 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | folderScanner.startD3 | string | `"false"` | Enable Delta Tre sports data integration |
 | folderScanner.startWatcher | string | `"true"` | Enable automatic file system monitoring to detect changes in template folders |
 | folders.customCertificatesSecret | string | `""` | Name of a Kubernetes Secret whose keys are mounted as certificate files into /etc/certs inside the Vulcano pod. Each key in the Secret becomes a file at /etc/certs/<key>. Leave empty to disable the certificate mount. |
-| folders.fonts | string | `""` | Active fonts folder for the Font Manager (Vulcano 1.9.31+). Empty derives `<vulcano.storage.mountPath>/fonts` so it follows the PVC mount. → vulcano.folderscanner.fontFolder |
-| folders.fontsInactive | string | `""` | Inactive (deactivated) fonts folder, backend-managed. Empty derives `<vulcano.storage.mountPath>/fonts_inactive`. → vulcano.folderscanner.fontInactiveFolder |
+| folders.fonts | string | `""` | Active fonts folder for the Font Manager (Vulcano 1.9.31+). Holds fonts that are active and distributed to render nodes; must sit on the shared PVC. Leave empty to derive `<vulcano.storage.mountPath>/fonts` automatically, so it follows the mount for every deployment without a per-environment override. → vulcano.folderscanner.fontFolder |
+| folders.fontsInactive | string | `""` | Inactive (deactivated) fonts folder, backend-managed and not used in rendering. Empty derives `<vulcano.storage.mountPath>/fonts_inactive`. → vulcano.folderscanner.fontInactiveFolder |
 | folders.media.clientFolder | string | `"/data/highres"` | Client-side path mapping for media files in path replacement operations |
 | folders.media.extension | string | `".mov"` | Comma-separated list of allowed media file extensions for processing |
 | folders.media.folder | string | `"/data/highres"` | Root directory path where generated high-resolution media files are stored |
@@ -654,6 +701,7 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | global | object | `{"namespace":"vulcano-app"}` | Global configuration for the Vulcano deployment |
 | global.namespace | string | `"vulcano-app"` | Kubernetes namespace for the deployment |
 | helmut | object | `{"apiToken":"","baseUrl":null,"clientId":"","clientSecret":"","cosmo":{"baseBreadcrumb":"","mappingDest":"","mappingSrc":"","sync":""},"logRequest":"","pageSize":""}` | ------------------------------------------------------------------------- |
+| hostAliases | list | `[]` | Static /etc/hosts entries injected into the Vulcano pod. Useful when the pod must reach a hostname that the cluster cannot resolve to an internal address (e.g. a self-hosted Keycloak whose public hostname does not NAT-loop back into the cluster). Each item: { ip: <addr>, hostnames: [<host>, ...] }. |
 | housekeeping.enabled | string | `"false"` | Enable automatic cleanup and maintenance tasks |
 | housekeeping.maxAge | string | `"14"` | Maximum age in days for housekeeping items before they are automatically cleaned up |
 | imagePullSecrets | object | `{"enabled":true,"secrets":[{"name":"docker-io"}]}` | Image Pull Secrets configuration |
@@ -720,6 +768,7 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | integrations.vidispine.workflowVersionMogrt | string | `""` | Version number of the MOGRT-specific workflow in Vidispine |
 | logging.fileMaxSize | string | `"10MB"` | Maximum size of the log file before it gets rotated |
 | logging.fileName | string | `"/data/LOGS/vulcano_k8s.log"` | Path to the log file where application logs are written |
+| logging.filePath | string | `"/data/logs"` | Directory written into Spring Boot's `logging.file.path` setting (controls log directory). Leave empty to fall back to the JVM-arg derived path (`vulcano.storage.mountPath + /logs`). |
 | logging.level.org | string | `"INFO"` | Logging level for the org package |
 | logging.level.securityFilter | string | `"WARN"` | Logging level for the security filter |
 | management.endpoint.caches.enabled | string | `"true"` | Enable the caches actuator endpoint |
@@ -735,14 +784,41 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | management.metrics.distribution.slo | string | `"50ms, 100ms, 200ms, 300ms, 500ms, 1s"` |  |
 | management.metrics.enable.all | string | `"true"` |  |
 | management.metrics.tags.application | string | `"vulcano-backend"` |  |
-| management.otlp.logging.enabled | string | `"false"` | Enable log export (Vulcano 1.9.31+). → management.logging.export.enabled |
+| management.otlp.logging.enabled | string | `"false"` | Enable log export. → management.logging.export.enabled |
 | management.otlp.logging.endpoint | string | `"http://localhost:4318/v1/logs"` | OTLP logs endpoint. → management.opentelemetry.logging.export.otlp.endpoint |
-| management.otlp.metrics.enabled | string | `"false"` | Enable metrics export (Vulcano 1.9.31+). → management.otlp.metrics.export.enabled |
+| management.otlp.metrics.enabled | string | `"false"` | Enable metrics export. → management.otlp.metrics.export.enabled |
 | management.otlp.metrics.endpoint | string | `"http://localhost:4318/v1/metrics"` | OTLP metrics endpoint. → management.otlp.metrics.export.url |
-| management.otlp.tracing.enabled | string | `"false"` | Enable trace export (Vulcano 1.9.31+). → management.tracing.export.enabled |
+| management.otlp.tracing.enabled | string | `"false"` | Enable trace export. → management.tracing.export.enabled |
 | management.otlp.tracing.endpoint | string | `"http://localhost:4318/v1/traces"` | OTLP traces endpoint. → management.opentelemetry.tracing.export.otlp.endpoint |
-| management.otlp.tracing.samplingProbability | string | `"0.1"` | Fraction of traces to sample (0.0–1.0). → management.tracing.sampling.probability |
+| management.otlp.tracing.samplingProbability | string | `"0.1"` | Fraction of traces to sample (0.0–1.0; 0.1 = 10% for prod, 1.0 for dev). → management.tracing.sampling.probability |
 | management.prometheus.metrics.export.enabled | string | `"true"` |  |
+| mongoBackup | object | `{"affinity":{},"database":"","enabled":false,"extraOpts":"--authenticationDatabase admin","image":{"pullPolicy":"IfNotPresent","repository":"docker.io/moovit/mongodb-s3-backup","tag":"latest"},"initBackup":true,"mongo":{"host":"","port":27017,"username":""},"nodeSelector":{},"resources":{},"retainCount":30,"s3":{"accessKeyId":"","backupFolder":"","bucket":"","endpointUrl":"","existingSecret":"","existingSecretAccessKeyIdKey":"AWS_ACCESS_KEY_ID","existingSecretSecretAccessKeyKey":"AWS_SECRET_ACCESS_KEY","region":"","secretAccessKey":""},"timezone":"Europe/Berlin","tolerations":[]}` | MongoDB → S3 backup (optional) Runs the moovit/mongodb-s3-backup image as a long-running Deployment that `mongodump`s MongoDB and uploads to S3 (initial backup on start, then the image's own internal ~24h loop — same as the Docker Swarm setup). Enable it in the release that owns the MongoDB you want to back up (e.g. vulcano-common for the shared instance). Connection details default to the chart's mongodb.* config; only the S3 destination + AWS credentials are required. |
+| mongoBackup.affinity | object | `{}` | Affinity for the backup pod (falls back to chart-level affinity) |
+| mongoBackup.database | string | `""` | Specific database to dump (MONGODB_DB). Empty = all databases. |
+| mongoBackup.enabled | bool | `false` | Enable the MongoDB backup Deployment |
+| mongoBackup.extraOpts | string | `"--authenticationDatabase admin"` | Extra mongodump flags. Defaults pin the auth database for the root user. |
+| mongoBackup.image.pullPolicy | string | `"IfNotPresent"` | Backup image pull policy |
+| mongoBackup.image.repository | string | `"docker.io/moovit/mongodb-s3-backup"` | Backup image repository |
+| mongoBackup.image.tag | string | `"latest"` | Backup image tag |
+| mongoBackup.initBackup | bool | `true` | Take a backup immediately on pod start (INIT_BACKUP). After that the image loops on its own internal ~24h timer. |
+| mongoBackup.mongo | object | `{"host":"","port":27017,"username":""}` | MongoDB connection overrides. Blank values derive from the mongodb.* config. |
+| mongoBackup.mongo.host | string | `""` | Override MongoDB host (default: derived from mongodb config) |
+| mongoBackup.mongo.port | int | `27017` | MongoDB port |
+| mongoBackup.mongo.username | string | `""` | Override MongoDB user (default: mongodb.auth.rootUsername) |
+| mongoBackup.nodeSelector | object | `{}` | Node selector for the backup pod (falls back to chart-level nodeSelector) |
+| mongoBackup.resources | object | `{}` | Resource requests/limits for the backup container |
+| mongoBackup.retainCount | int | `30` | Number of backups to keep in S3 (older ones are pruned) |
+| mongoBackup.s3.accessKeyId | string | `""` | AWS access key id (used only when existingSecret is empty; put in values.secret.yaml) |
+| mongoBackup.s3.backupFolder | string | `""` | Folder/prefix inside the bucket |
+| mongoBackup.s3.bucket | string | `""` | Target S3 bucket name |
+| mongoBackup.s3.endpointUrl | string | `""` | Custom S3-compatible endpoint URL (ENDPOINT_URL). Optional. |
+| mongoBackup.s3.existingSecret | string | `""` | Name of an existing Secret holding the AWS credentials. When set, the chart does NOT create the mongo-backup-credentials secret. |
+| mongoBackup.s3.existingSecretAccessKeyIdKey | string | `"AWS_ACCESS_KEY_ID"` | Key in existingSecret holding the access key id |
+| mongoBackup.s3.existingSecretSecretAccessKeyKey | string | `"AWS_SECRET_ACCESS_KEY"` | Key in existingSecret holding the secret access key |
+| mongoBackup.s3.region | string | `""` | Bucket region (BUCKET_REGION). Optional. |
+| mongoBackup.s3.secretAccessKey | string | `""` | AWS secret access key (used only when existingSecret is empty; put in values.secret.yaml) |
+| mongoBackup.timezone | string | `"Europe/Berlin"` | Timezone for the container (IANA name); affects backup timestamp naming. Empty = UTC. |
+| mongoBackup.tolerations | list | `[]` | Tolerations for the backup pod (falls back to chart-level tolerations) |
 | mongodb | object | `{"auth":{"existingSecret":"","existingSecretPasswordKey":"mongodb-root-password","rootPassword":"bitte","rootUsername":"root"},"database":"vulcano","enabled":true,"externalHost":"","fullnameOverride":"mongodb","metrics":{"enabled":false},"persistence":{"enabled":true,"size":"50Gi","storageClassName":""},"replicaCount":3,"resources":{"limits":{"cpu":"2000m","memory":"4Gi"},"requests":{"cpu":"1000m","memory":"2Gi"}}}` | MongoDB Configuration |
 | mongodb.auth.existingSecret | string | `""` | Name of an existing Kubernetes Secret containing MongoDB credentials. When set, rootPassword is ignored and the chart will NOT create a mongodb-credentials secret. |
 | mongodb.auth.existingSecretPasswordKey | string | `"mongodb-root-password"` | Key inside existingSecret that holds the root password (chart default: "mongodb-root-password") |
@@ -772,7 +848,7 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | rabbitmq | object | `{"auth":{"erlangCookie":"VULCANO_SECRET_COOKIE","existingErlangCookieKey":"erlang-cookie","existingPasswordKey":"password","existingSecret":"","password":"vulcano0479","username":"vulcano"},"enabled":true,"externalHost":"","fullnameOverride":"rabbitmq","jobUpdateQueue":"vulcano-job-updates","metrics":{"enabled":false},"persistence":{"enabled":false},"replicaCount":3,"resources":{"limits":{"cpu":"1000m","memory":"2Gi"},"requests":{"cpu":"500m","memory":"1Gi"}},"service":{"type":"NodePort"}}` | RabbitMQ Configuration |
 | rabbitmq.auth.erlangCookie | string | `"VULCANO_SECRET_COOKIE"` | Erlang cookie for RabbitMQ clustering (ignored when existingSecret is set) |
 | rabbitmq.auth.existingErlangCookieKey | string | `"erlang-cookie"` | Key inside existingSecret that holds the Erlang cookie |
-| rabbitmq.auth.existingPasswordKey | string | `"password"` | Key inside existingSecret that holds the RabbitMQ password. Default matches the keys written by the cloudpirates/rabbitmq sub-chart's own Secret. Override only when pointing at an externally managed Secret that uses a different key name (e.g. "rabbitmq-password" from a Bitwarden mapping or legacy Bitnami secret). |
+| rabbitmq.auth.existingPasswordKey | string | `"password"` | Key inside existingSecret that holds the RabbitMQ password. Default "password" matches the keys written by the cloudpirates/rabbitmq sub-chart's own Secret. Override only when pointing at an externally managed Secret that uses a different key name (e.g. "rabbitmq-password" from a Bitwarden mapping or legacy Bitnami secret). |
 | rabbitmq.auth.existingSecret | string | `""` | Name of an existing Kubernetes Secret containing RabbitMQ credentials. When set, password and erlangCookie are ignored and the chart will NOT create a rabbitmq-credentials secret. |
 | rabbitmq.auth.password | string | `"vulcano0479"` | RabbitMQ admin password (ignored when existingSecret is set) |
 | rabbitmq.auth.username | string | `"vulcano"` | RabbitMQ admin username |
@@ -791,6 +867,7 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | serviceAccount.annotations | object | `{}` |  |
 | serviceAccount.create | bool | `true` |  |
 | serviceAccount.name | string | `"vulcano"` |  |
+| smbCsi.domain | string | `""` | Optional Active Directory domain for SMB authentication. When set, the CSI driver passes `domain=<value>` to mount.cifs instead of relying on DOMAIN\username parsing. Leave empty for non-AD shares or when the username field already carries the domain prefix. |
 | smbCsi.enabled | bool | `false` |  |
 | smbCsi.password | string | `"password"` |  |
 | smbCsi.uri | string | `"//xxx.xxx.xxx.xxx/mountpoint"` |  |
@@ -834,19 +911,22 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | vulcano.frontend.enableTimecodeForAssets | string | `"false"` | If enabled, a Timecode input will appear in the PreferenceView for assets |
 | vulcano.gateway.enabled | bool | `false` | Enable Gateway API routing (renders an HTTPRoute). Mutually independent from `ingress.enabled` – do not enable both for the same host. |
 | vulcano.gateway.hostnames | list | `[]` | Hostnames for the route. Falls back to `vulcano.ingress.hosts` when empty. |
+| vulcano.gateway.parentRef | object | `{"name":"","namespace":"","sectionName":""}` | Reference to the existing Gateway this route attaches to. |
 | vulcano.gateway.parentRef.name | string | `""` | Name of the Gateway (required when gateway.enabled=true) |
 | vulcano.gateway.parentRef.namespace | string | `""` | Namespace of the Gateway (defaults to the release namespace when empty) |
 | vulcano.gateway.parentRef.sectionName | string | `""` | Listener section name on the Gateway (optional; e.g. "https") |
 | vulcano.gateway.path | string | `"/"` | Path prefix to match |
-| vulcano.gateway.timeouts.backendRequest | string | `"3600s"` | Gateway API v1 backend request timeout |
-| vulcano.gateway.timeouts.request | string | `"3600s"` | Gateway API v1 request timeout (generous for slow renders / large downloads) |
+| vulcano.gateway.timeouts | object | `{"backendRequest":"3600s","request":"3600s"}` | Request timeouts (Gateway API v1) – generous defaults for slow renders and large /hires downloads, mirroring the legacy nginx proxy timeouts. |
+| vulcano.graphicGenerator.rendition.formats | string | `"Facebook=1080x1920,Instagram=1080x1080"` | Comma-separated list of named output formats produced by the graphics generator (e.g. social-media renditions). Format: "Name1=WxH,Name2=WxH". Empty disables custom format generation. Used by the Packaging Machine (Beta, Vulcano 1.9.31+). NOTE: the Packaging Machine also requires the reframer binary on every render node (`vulcano.media.reframer`); that is a per-render-node setting and is out of scope for this server chart. |
 | vulcano.home.base | string | `"/home"` |  |
 | vulcano.ingress.annotations."nginx.ingress.kubernetes.io/proxy-body-size" | string | `"500m"` |  |
+| vulcano.ingress.annotations."nginx.ingress.kubernetes.io/proxy-buffering" | string | `"off"` |  |
+| vulcano.ingress.annotations."nginx.ingress.kubernetes.io/proxy-max-temp-file-size" | string | `"0"` |  |
 | vulcano.ingress.annotations."nginx.ingress.kubernetes.io/proxy-read-timeout" | string | `"3600"` |  |
 | vulcano.ingress.annotations."nginx.ingress.kubernetes.io/proxy-send-timeout" | string | `"3600"` |  |
 | vulcano.ingress.annotations."nginx.ingress.kubernetes.io/server-snippets" | string | `"location /ws {\n proxy_set_header Upgrade $http_upgrade;\n proxy_http_version 1.1;\n proxy_set_header X-Forwarded-Host $http_host;\n proxy_set_header X-Forwarded-Proto $scheme;\n proxy_set_header X-Forwarded-For $remote_addr;\n proxy_set_header Host $host;\n proxy_set_header Connection \"upgrade\";\n proxy_cache_bypass $http_upgrade;\n}\n"` |  |
 | vulcano.ingress.className | string | `"nginx"` | Ingress class name |
-| vulcano.ingress.enabled | bool | `true` | Enable ingress |
+| vulcano.ingress.enabled | bool | `true` | Enable ingress (legacy Ingress API). See the `gateway` block below for the Gateway API alternative. |
 | vulcano.ingress.hosts | list | `["vulcano.example.com"]` | Ingress hosts (supports multiple domains) |
 | vulcano.ingress.path | string | `"/"` |  |
 | vulcano.ingress.tls | object | `{"enabled":false,"existing":{"secretName":"tls-vulcano-cert"},"letsencrypt":{"clusterIssuer":"letsencrypt-prod","email":"admin@example.com","enabled":false},"source":"letsencrypt"}` | Enable TLS |
@@ -886,9 +966,11 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | vulcano.storage.pvc | string | `"smb-vulcano-data"` | Name of the PVC that is created by the chart (used when existingClaim is empty) |
 | vulcano.storage.size | string | `"10Gi"` |  |
 | vulcano.storage.storageClass | string | `"longhorn"` | Storage class for the PVC (leave empty for cluster default, set to "-" to omit storageClassName entirely) |
+| vulcano.strategy | string | `""` | Deployment update strategy. Leave empty for auto-detect (recommended): the chart picks "RollingUpdate" when ALL volumes are ReadWriteMany, and falls back to "Recreate" if any volume is ReadWriteOnce – otherwise a rolling update would hit a Multi-Attach error when the new pod is scheduled on a different node than the old one. Set explicitly to "Recreate" or "RollingUpdate" to override. |
 | vulcano.subtitle | string | `""` | Custom subtitle text displayed in the web interface header |
 | vulcano.useCustomFileName | string | `"false"` | Allow users to specify custom filenames when creating assets instead of using auto-generated names |
 | vulcano.webconfig.disable | string | `"false"` | Disable the web-based configuration interface |
 
-----------------------------------------------
-Autogenerated from chart metadata using [helm-docs v1.14.2](https://github.com/norwoodj/helm-docs/releases/v1.14.2)
+------
+
+Autogenerated from chart metadata using [helm-docs](https://github.com/norwoodj/helm-docs)

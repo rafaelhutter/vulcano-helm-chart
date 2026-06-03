@@ -103,6 +103,34 @@ service auth fails with 403 and the connectors crash-loop.
 {{- end }}
 
 {{/*
+MongoDB root-password Secret name.
+Single source of truth so the Vulcano env helper and the mongo-backup CronJob
+reference the same Secret. Mirrors the cloudpirates sub-chart, which names its
+secret after the MongoDB fullname (default "mongodb"); falls back to the
+chart-managed "mongodb-credentials" secret when using an external host.
+*/}}
+{{- define "vulcano.mongodb.secretName" -}}
+{{- if .Values.mongodb.auth.existingSecret -}}
+{{- .Values.mongodb.auth.existingSecret -}}
+{{- else if .Values.mongodb.enabled -}}
+{{- .Values.mongodb.fullnameOverride | default "mongodb" -}}
+{{- else -}}
+mongodb-credentials
+{{- end -}}
+{{- end }}
+
+{{/*
+MongoDB root-password Secret key. Pairs with vulcano.mongodb.secretName.
+*/}}
+{{- define "vulcano.mongodb.secretPasswordKey" -}}
+{{- if .Values.mongodb.auth.existingSecret -}}
+{{- .Values.mongodb.auth.existingSecretPasswordKey | default "mongodb-root-password" -}}
+{{- else -}}
+mongodb-root-password
+{{- end -}}
+{{- end }}
+
+{{/*
 MongoDB Spring Boot env vars.
 Emits each property under both the legacy `spring.data.mongodb.*` keys and the
 new `spring.mongodb.*` keys required since the Spring Boot upgrade, so the
@@ -129,16 +157,8 @@ chart works against apps using either binding.
 - name: {{ $prefix }}.password
   valueFrom:
     secretKeyRef:
-      {{- if $.Values.mongodb.auth.existingSecret }}
-      name: {{ $.Values.mongodb.auth.existingSecret }}
-      key: {{ $.Values.mongodb.auth.existingSecretPasswordKey | default "mongodb-root-password" }}
-      {{- else if $.Values.mongodb.enabled }}
-      name: {{ $.Values.mongodb.fullnameOverride | default "mongodb" }}
-      key: mongodb-root-password
-      {{- else }}
-      name: mongodb-credentials
-      key: mongodb-root-password
-      {{- end }}
+      name: {{ include "vulcano.mongodb.secretName" $ }}
+      key: {{ include "vulcano.mongodb.secretPasswordKey" $ }}
 {{- end }}
 {{- end }}
 {{- end }}
