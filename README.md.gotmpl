@@ -1,0 +1,632 @@
+{{ template "chart.header" . }}
+
+{{ template "chart.badgesSection" . }}
+
+{{ template "chart.description" . }}
+
+{{ template "chart.homepageLine" . }}
+
+{{ template "chart.maintainersSection" . }}
+
+{{ template "chart.sourcesSection" . }}
+
+{{ template "chart.requirementsSection" . }}
+
+## Installation
+
+You can either pull the packaged chart from the GitHub Pages helm repo, or clone the source tree and install from disk. Either way, all real credentials live in `install-values.yaml`, which is **gitignored** and never committed.
+
+For a multi-instance deployment (shared MongoDB + RabbitMQ, multiple Vulcano releases pointing at them), see [Shared Services / Multi-Instance Deployment](#shared-services--multi-instance-deployment) further down.
+
+### Option A — install from the helm repo (preferred)
+
+```bash
+helm repo add rafaelhutter https://rafaelhutter.github.io/vulcano-helm-chart
+helm repo update
+
+# Grab a values template, edit it, then install:
+curl -fsSL -o install-values.yaml \
+  https://raw.githubusercontent.com/rafaelhutter/vulcano-helm-chart/main/examples/values.yaml
+$EDITOR install-values.yaml
+
+helm upgrade vulcano rafaelhutter/vulcano --install \
+  -n vulcano-app --create-namespace \
+  -f install-values.yaml
+```
+
+### Option B — install from a source checkout
+
+#### 1. Clone the repository
+
+```bash
+git clone https://github.com/rafaelhutter/vulcano-helm-chart.git
+cd vulcano-helm-chart
+```
+
+#### 2. Create `install-values.yaml`
+
+`install-values.yaml` is **gitignored** (it holds real credentials). Copy the example template as a starting point and edit it for your environment:
+
+```bash
+cp examples/values.yaml install-values.yaml
+$EDITOR install-values.yaml
+```
+
+The file collects everything in one place — no `--set` flags needed:
+
+```yaml
+global:
+  namespace: "vulcano-app"
+  domain: "vulcano.example.com"
+
+imagePullSecrets:
+  enabled: true
+  dockerUsername: "moovit"
+  dockerPassword: "DOCKER_PAT"            # provided by Moovit
+
+vulcano:
+  ingress:
+    enabled: true
+    hosts:
+      - "vulcano.example.com"
+    tls:
+      enabled: true
+      letsencrypt:
+        enabled: true
+        clusterIssuer: "letsencrypt-prod"
+        email: "admin@example.com"
+  license:
+    key: ""                                # provided by Moovit
+
+mongodb:
+  auth:
+    rootUsername: "admin"
+    rootPassword: "CHANGE_ME"
+
+rabbitmq:
+  auth:
+    username: "vulcano"
+    password: "CHANGE_ME"
+    erlangCookie: "RANDOM_LONG_STRING"
+
+auth:
+  mode: "MICROSOFT"
+  microsoft:
+    authority: "https://login.microsoftonline.com/YOUR_TENANT_ID"
+    clientId: "YOUR_CLIENT_ID"
+```
+
+#### 3. Install the chart
+
+```bash
+helm upgrade vulcano --install \
+  -n vulcano-app \
+  --create-namespace \
+  -f install-values.yaml \
+  .
+```
+
+Or run the bundled wrapper, which does the same thing using `examples/values.yaml`:
+
+```bash
+bash examples/install.sh
+```
+
+## Advanced Configuration
+
+### Existing Secrets (MongoDB & RabbitMQ)
+
+By default the chart creates Kubernetes Secrets for MongoDB and RabbitMQ credentials from the plaintext values in `values.yaml`.
+If you manage secrets externally (e.g. via [Bitwarden Secrets Manager](https://bitwarden.com/products/secrets-manager/), External Secrets Operator, Vault, etc.) you can skip secret creation and point the chart to an existing Secret instead:
+
+```yaml
+mongodb:
+  auth:
+    existingSecret: "bw-mongodb-secrets"       # chart will NOT create a mongodb-credentials Secret
+    existingPasswordKey: "mongodb-root-password"
+    existingUsernameKey: ""                     # leave empty to use rootUser value directly
+
+rabbitmq:
+  auth:
+    existingSecret: "bw-rabbitmq-secrets"      # chart will NOT create a rabbitmq-credentials Secret
+    existingPasswordKey: "bw-rabbitmq-password"
+    existingErlangCookieKey: "bw-rabbitmq-erlang-cookie"
+```
+
+### MongoDB Data Preservation Across Upgrades
+
+The `cloudpirates/mongodb` sub-chart provisions its persistent volume via a
+StatefulSet `volumeClaimTemplate`. With the chart's `fullnameOverride: "mongodb"`
+that produces a PVC named **`data-mongodb-0`** (template name `data` +
+StatefulSet name `mongodb` + ordinal `0`).
+
+This matters in two scenarios:
+
+**1. `helm uninstall` followed by `helm install`.**
+Kubernetes does **not** delete PVCs created by `volumeClaimTemplates` when the
+parent StatefulSet is removed. The PVC (and its underlying PV) survive
+`helm uninstall`. When you reinstall the chart with the same release name and
+the same `mongodb.fullnameOverride`, the new StatefulSet picks up the existing
+`data-mongodb-0` PVC and binds to the existing data automatically — **no
+restore step needed**.
+
+**2. Migrating from an older deployment of the same chart family.**
+If the cluster already runs a MongoDB deployed via a different chart
+(Bitnami, custom Helm, etc.), the existing PVC will have a different name
+(typically `datadir-mongodb-0` for Bitnami). Tell the new chart to reuse it:
+
+```yaml
+mongodb:
+  persistence:
+    existingClaim: "datadir-mongodb-0"   # or whatever the existing PVC is called
+```
+
+When `existingClaim` is set the sub-chart skips the `volumeClaimTemplate`
+entirely and mounts the named PVC as the `data` volume directly.
+
+**Verifying before you deploy**
+
+```bash
+kubectl get pvc -n <namespace>
+kubectl get statefulset -n <namespace> mongodb \
+  -o jsonpath='{.spec.volumeClaimTemplates[0].metadata.name}'
+```
+
+If the PVC list contains `data-mongodb-0` and the second command returns
+`data`, a plain `helm upgrade --install` will reuse the existing data.
+
+**Pinning the MongoDB image for byte-for-byte data compatibility**
+
+Each chart release bumps the sub-chart's default Mongo image (e.g. `8.2.4`).
+Minor upgrades (`8.0 → 8.2`) are safe under WiredTiger, but if you need an
+exact image match for the on-disk data — for instance to restore a backup
+from a frozen environment — pin the tag explicitly:
+
+```yaml
+mongodb:
+  image:
+    tag: "8.0.12"
+```
+
+**Belt-and-suspenders: take a `mongodump` snapshot before any change**
+
+```bash
+MONGO_PW=$(kubectl get secret mongodb -n <ns> \
+  -o jsonpath='{.data.mongodb-root-password}' | base64 -d)
+
+STAMP=$(date +%Y%m%d-%H%M)
+kubectl exec -n <ns> mongodb-0 -- \
+  mongodump --host localhost:27017 -u root -p "$MONGO_PW" \
+            --authenticationDatabase admin --db <database> --gzip \
+            --archive=/tmp/mongo-${STAMP}.gz
+
+kubectl cp <ns>/mongodb-0:/tmp/mongo-${STAMP}.gz ./mongo-${STAMP}.gz
+```
+
+To restore later, copy the archive back to a Mongo pod and run
+`mongorestore --gzip --archive=/tmp/mongo-...gz --drop --db <database> ...`
+against the new instance.
+
+### Automated MongoDB Backups (S3)
+
+For off-cluster backups the chart ships an optional `mongoBackup` component: a
+long-running **Deployment** of
+[`moovit/mongodb-s3-backup`](https://hub.docker.com/r/moovit/mongodb-s3-backup)
+that `mongodump`s MongoDB and uploads the archive to an S3 bucket, pruning old
+backups beyond `retainCount`. The image is a backup **daemon** — it takes a
+backup on start (`INIT_BACKUP`) and then repeats on its own internal ~24h timer
+(this is the same way it runs under Docker Swarm with `restart: always`).
+
+Enable it in the release that **owns** the MongoDB you want to back up — i.e.
+the shared-services release (`vulcano-common`) for the shared instance, or a
+per-customer release that runs its own MongoDB. The MongoDB host, user and
+password are derived automatically from the chart's `mongodb.*` config (the
+password is read from the live `mongodb` secret), so you only supply the S3
+destination and AWS credentials:
+
+```yaml
+mongoBackup:
+  enabled: true
+  retainCount: 30
+  s3:
+    bucket: "my-vulcano-backups"
+    backupFolder: "surfplanet/shared-vulcano"
+    # AWS keys belong in your gitignored secret values file:
+    accessKeyId: "<AWS_ACCESS_KEY_ID>"
+    secretAccessKey: "<AWS_SECRET_ACCESS_KEY>"
+```
+
+Already have the AWS keys in a Secret (e.g. via Bitwarden / `extraObjects`)?
+Point at it instead and the chart won't create its own:
+
+```yaml
+mongoBackup:
+  enabled: true
+  s3:
+    bucket: "my-vulcano-backups"
+    backupFolder: "surfplanet/shared-vulcano"
+    existingSecret: "my-aws-secret"            # keys: AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY
+```
+
+S3-compatible stores (MinIO, Wasabi, …) work via `s3.endpointUrl` and
+`s3.region`. To dump a single database set `database:`; to keep the full
+cluster dump, leave it empty.
+
+> **Private image / pull secrets:** `vulcano-common` ships with
+> `imagePullSecrets` disabled. If the backup image is not anonymously pullable,
+> enable image pull secrets in that release so the backup pod can pull it.
+
+**Verify / run a backup on demand:**
+
+```bash
+kubectl get deploy mongo-backup -n <ns>
+kubectl logs -f deploy/mongo-backup -n <ns>   # expect: dump + S3 upload OK
+# Force an extra backup now (the daemon backs up on start):
+kubectl rollout restart deploy/mongo-backup -n <ns>
+```
+
+**Restore** from S3 by running the same image with `INIT_RESTORE=1` (it pulls
+the latest archive from `BUCKET`/`BACKUP_FOLDER` and `mongorestore`s it). See
+the operational runbook in `AI_AGENT_GUIDE.md` for the exact one-off Job.
+
+### Dry-run pre-flight
+
+`helm install` accepts `--dry-run=server`, which renders the chart, sends it
+to the Kubernetes API for server-side validation (admission webhooks, RBAC,
+CRD existence, schema checks), and returns the result without persisting
+anything. Use it whenever you're unsure whether a values change will apply
+cleanly:
+
+```bash
+helm upgrade --install vulcano vulcano-helm-chart/vulcano \
+  --version 1.3.0 -n vulcano-app \
+  -f values.yaml -f values.secret.yaml \
+  --dry-run=server
+```
+
+> `--dry-run=client` only renders templates locally but **still requires
+> cluster connectivity** to query API capabilities. There is no fully
+> offline dry-run; use `helm template ...` if you need pure local rendering.
+
+### SMB CSI – Active Directory domain authentication
+
+The chart's `smbcreds` Secret only emits `username` + `password` keys; there
+is no separate `domain` key. To authenticate against a Windows / AD share,
+encode the domain into the username field with a backslash:
+
+```yaml
+smbCsi:
+  enabled: true
+  uri: "//fileserver.corp.example.com/share"
+  username: "CORP\\svc_vulcano"
+  # password: -> values.secret.yaml
+```
+
+The `smb.csi.k8s.io` driver accepts both `DOMAIN\user` and `user@DOMAIN`
+formats. Use double-backslash in YAML — single backslash is a YAML escape
+character.
+
+### Shared Services / Multi-Instance Deployment
+
+You can deploy MongoDB and RabbitMQ **once** into a shared namespace (e.g. `vulcano-common`) and then point multiple independent Vulcano instances to those services. This avoids running a separate database stack per customer / environment.
+
+The `deployments/` folder in this repository follows the recommended layout:
+
+```
+deployments/
+  vulcano-common/
+    values.yaml            # shared services (MongoDB + RabbitMQ), committed
+    values.secret.yaml     # credentials, gitignored
+  vulcano-<instance>/
+    values.yaml            # per-instance config, committed
+    values.secret.yaml     # credentials, gitignored
+```
+
+Secret files are excluded from git via `.gitignore` (`deployments/**/*.secret.yaml`).
+
+**Step 1 – Deploy the shared services (once)**
+
+Create a `values.yaml` and a `values.secret.yaml` (see `examples/shared-services-values.yaml` as a template), then run:
+
+```bash
+helm upgrade --install vulcano-common /path/to/vulcano-helm-chart \
+  --namespace vulcano-common \
+  --create-namespace \
+  --values deployments/vulcano-common/values.yaml \
+  --values deployments/vulcano-common/values.secret.yaml
+```
+
+This installs MongoDB + RabbitMQ into the `vulcano-common` namespace. After the rollout the services are reachable cluster-internally at:
+
+| Service | FQDN |
+|---------|------|
+| MongoDB (replicaset) | `mongodb-headless.vulcano-common.svc.cluster.local:27017` |
+| RabbitMQ | `rabbitmq.vulcano-common.svc.cluster.local:5672` |
+
+> **⚠️ MongoDB ReplicaSet – manual initiation required on first install**
+>
+> The `cloudpirates/mongodb` sub-chart does **not** automatically initiate the ReplicaSet.
+> After all 3 pods are `Running`, exec into the primary and run:
+>
+> ```bash
+> kubectl exec -it mongodb-0 -n vulcano-common -- mongosh \
+>   -u admin -p <rootPassword> --authenticationDatabase admin \
+>   --eval 'rs.initiate({
+>     _id: "rs0",
+>     members: [
+>       { _id: 0, host: "mongodb-0.mongodb-headless.vulcano-common.svc.cluster.local:27017" },
+>       { _id: 1, host: "mongodb-1.mongodb-headless.vulcano-common.svc.cluster.local:27017" },
+>       { _id: 2, host: "mongodb-2.mongodb-headless.vulcano-common.svc.cluster.local:27017" }
+>     ]
+>   })'
+> ```
+>
+> Verify with `rs.status()` — one member should show `"stateStr": "PRIMARY"`.
+
+> **ℹ️ RabbitMQ – `cloudpirates/rabbitmq` secret key names**
+>
+> The `cloudpirates/rabbitmq` sub-chart writes its Secret with the keys
+> `password` and `erlang-cookie` (no `rabbitmq-` prefix). The chart defaults
+> match this:
+>
+> ```yaml
+> rabbitmq:
+>   auth:
+>     existingPasswordKey: "password"
+>     existingErlangCookieKey: "erlang-cookie"
+> ```
+>
+> If you point the chart at an externally managed Secret (e.g. Bitwarden,
+> External Secrets) whose keys are named differently — for instance
+> `rabbitmq-password` from a legacy Bitnami import — override these keys to
+> match your external Secret's actual field names.
+
+**Step 2 – Deploy each Vulcano instance**
+
+Use `examples/vulcano-only-values.yaml` as a starting point. The key settings are:
+
+```yaml
+mongodb:
+  enabled: false          # do NOT deploy MongoDB inside this release
+  externalHost: "mongodb-headless.vulcano-common.svc.cluster.local"
+  auth:
+    rootUser: "admin"
+    rootPassword: "SAME_AS_SHARED_SERVICES"  # must match shared-services values
+  replicaSet:
+    enabled: true
+    name: "rs0"
+
+rabbitmq:
+  enabled: false          # do NOT deploy RabbitMQ inside this release
+  externalHost: "rabbitmq.vulcano-common.svc.cluster.local"
+  auth:
+    username: "vulcano"
+    password: "SAME_AS_SHARED_SERVICES"      # must match shared-services values
+```
+
+Then deploy the instance:
+
+```bash
+helm upgrade --install vulcano-customer1 /path/to/vulcano-helm-chart \
+  --namespace vulcano-customer1 \
+  --create-namespace \
+  --values deployments/vulcano-customer1/values.yaml \
+  --values deployments/vulcano-customer1/values.secret.yaml
+```
+
+Repeat Step 2 for every additional Vulcano instance, changing `global.namespace`, `global.domain`, and `vulcano.ingress.hosts` each time.
+
+> **ℹ️ SMB CSI – use IP address for the server**
+>
+> If the SMB server hostname is not resolvable from within the cluster (e.g. it's a local NAS hostname),
+> use its IP address in `smbCsi.uri`:
+>
+> ```yaml
+> smbCsi:
+>   uri: "//10.0.0.201/RAID/vulcano/myinstance"   # IP, not hostname
+> ```
+
+> **ℹ️ RabbitMQ – external access for render nodes**
+>
+> By default RabbitMQ is only reachable inside the cluster (`ClusterIP`). To allow render nodes in
+> the same LAN to connect, add a `rabbitmq-external` NodePort service via `extraObjects` in your
+> shared-services values (see `deployments/vulcano-common/values.yaml` for a working example):
+>
+> ```yaml
+> extraObjects:
+>   - apiVersion: v1
+>     kind: Service
+>     metadata:
+>       name: rabbitmq-external
+>       namespace: "vulcano-common"
+>     spec:
+>       type: NodePort
+>       selector:
+>         app.kubernetes.io/name: rabbitmq
+>       ports:
+>         - name: amqp
+>           port: 5672
+>           targetPort: amqp
+>           nodePort: 32672      # fixed – survives helm upgrade
+>         - name: management
+>           port: 15672
+>           targetPort: mgmt
+>           nodePort: 31672      # Management UI
+> ```
+>
+> The render node `application.properties`:
+>
+> ```properties
+> spring.rabbitmq.addresses=amqp://<user>:<password>@10.10.10.35:32672,amqp://<user>:<password>@10.10.10.46:32672,amqp://<user>:<password>@10.10.10.51:32672
+> ```
+>
+> Management UI: `http://<node-ip>:31672`
+>
+> Using a dedicated `extraObjects` service (instead of patching the sub-chart service) ensures the
+> NodePort is **declarative** and survives every `helm upgrade` without manual intervention.
+
+> **ℹ️ Let's Encrypt HTTP-01 challenge**
+>
+> For automatic TLS via cert-manager, ports **80 and 443** must be reachable from the internet at the
+> domain's public IP. Ensure your router forwards both ports to at least one cluster node running the
+> ingress controller.
+
+> **⚠️ ingress-nginx is retired (EOL March 2026)**
+>
+> Upstream [ingress-nginx maintenance halted in March 2026](https://kubernetes.io/blog/2025/11/11/ingress-nginx-retirement/)
+> — no further releases, bug-fixes, or security patches. The chart still defaults to
+> `vulcano.ingress.className: nginx` and existing installs keep working, but plan a migration:
+> enable the **opt-in Gateway API** support (`vulcano.gateway.enabled=true` + a `parentRef`,
+> which renders an `HTTPRoute`), or switch to a maintained alternative Ingress controller.
+
+### Extra Objects
+
+`extraObjects` lets you deploy arbitrary Kubernetes resources alongside the chart. Every entry supports Helm templating via `tpl`, so you can reference `.Release.Name`, `.Values.*`, etc.
+
+Typical use-cases:
+- **Bitwarden / External Secrets** – create secrets from an external vault and reference them via `existingSecret` above
+- **Custom PVCs / PVs** – provision a PVC with a special storage class (e.g. CSI SMB) and hand it to the Vulcano pod via `vulcano.storage.existingClaim`
+
+```yaml
+extraObjects:
+  # Bitwarden Secrets Manager – delivers credentials into K8s Secrets
+  - apiVersion: k8s.bitwarden.com/v1
+    kind: BitwardenSecret
+    metadata:
+      name: rabbitmq
+      namespace: "{{ "{{ .Values.global.namespace }}" }}"
+    spec:
+      organizationId: "<org-id>"
+      secretName: bw-rabbitmq-secrets
+      map:
+        password: "bw-rabbitmq-password"
+  # Custom PVC with CSI SMB
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: smb-vulcano-data
+      namespace: "{{ "{{ .Values.global.namespace }}" }}"
+    spec:
+      accessModes:
+        - ReadWriteMany
+      storageClassName: smb
+      resources:
+        requests:
+          storage: 1Ti
+```
+
+------
+
+### Persistent Storage
+
+The chart creates a PVC for Vulcano application data by default. You can customise every aspect:
+
+```yaml
+vulcano:
+  storage:
+    size: "50Gi"
+    storageClass: "longhorn"          # storage class; leave empty for cluster default
+    accessModes: ReadWriteOnce
+    labels: {}
+    annotations:
+      helm.sh/resource-policy: keep   # prevent accidental deletion on helm uninstall
+    existingClaim: ""                 # mount a pre-existing PVC instead of creating one
+```
+
+When `existingClaim` is set the chart skips PVC creation entirely and mounts the referenced claim directly into the Vulcano pod.
+
+#### Per-folder PVCs (`extraMounts`)
+
+When individual Vulcano folders need different backing storage — e.g. `/data/highres` on fast NVMe while `/data/highres_templates` lives on a separate share — list them under `vulcano.storage.extraMounts`. Each entry is mounted on top of the primary mount on both the `vulcano` and `filetransfer` pods (filetransfer mounts read-only), so the on-disk file tree stays consistent across the components.
+
+For every entry provide `name` + `mountPath` and **either**:
+
+- `existingClaim` — reference a PVC you have already provisioned (the chart will not create one), or
+- `pvc` / `size` / `accessModes` / `storageClass` / `labels` / `annotations` — let the chart template a new PVC alongside the primary one. If `pvc` is omitted the PVC name defaults to `vulcano-<name>`.
+
+```yaml
+vulcano:
+  storage:
+    mountPath: "/data"
+    pvc: "vulcano-data"
+    size: "50Gi"
+
+    extraMounts:
+      # /data/highres backed by a pre-provisioned fast-storage PVC
+      - name: highres
+        mountPath: "/data/highres"
+        existingClaim: "vulcano-highres-fast-nvme"
+
+      # /data/highres_templates backed by a PVC the chart creates
+      - name: highres-templates
+        mountPath: "/data/highres_templates"
+        size: "200Gi"
+        accessModes: "ReadWriteMany"
+        storageClass: "longhorn"
+```
+
+> SMB-CSI provisioning (`smbCsi.enabled`) only applies to the primary PVC. For SMB-backed extras, provision the PV/PVC yourself (e.g. via `extraObjects`) and reference it with `existingClaim`.
+
+### Optional sidekick Deployments
+
+The chart can deploy two optional companion services in the same release as the Vulcano backend. Both are off by default — flip `<component>.enabled: true` to bring them up.
+
+#### `filetransfer`
+
+A separate deployment that ships rendered output to external destinations (FTP / SFTP / ZDF Upload Portal via TUS). It mounts `vulcano.storage` **read-only** and authenticates against the Vulcano API as the `service_admin` user (password is sourced from the shared `vulcano-credentials` Secret).
+
+```yaml
+filetransfer:
+  enabled: true
+  port: 8999
+  properties:
+    transfer.type: "ftp"                   # ftp | sftp | zdf
+    transfer.destination: "/data/transfer" # FTP/SFTP only — must be on a mounted path
+    transfer.logApiRequests: "false"
+
+  # ZDF mode only — declarative TUS targets.
+  # Each target name is referenced in the API call; inviteCode is per-target.
+  zdfTargets:
+    TARGET1:
+      inviteCode: ""   # sensitive – put in values.secret.yaml
+```
+
+If you use `vulcano.storage.extraMounts`, filetransfer automatically gets the same set of mounts read-only so its view of the filesystem matches Vulcano's.
+
+#### `dflconnector`
+
+Bridges the DFL (Deutsche Fußball Liga) data-feed websocket / REST API into Vulcano: subscribes to configured services, fetches initial fixtures, and posts updates back to Vulcano. Authenticates as `service_admin` (hardcoded username in the connector code; password from `vulcano-credentials`).
+
+```yaml
+dflconnector:
+  enabled: true
+  port: 8080
+  properties:
+    vulcano.base.url: "http://vulcano:8889/"
+    vulcano.dfl.competitionId: "DFL-COM-000001,DFL-COM-000002"
+    vulcano.dfl.seasonId: "DFL-SEA-0001K9"
+    vulcano.dfl.services: "DFL-05.01-Tabelle,DFL-02.01-Spielinformationen,..."
+    vulcano.dfl.websocket.clientId: "<assigned-by-dfl>"
+    vulcano.dfl.websocket.url: "wss://ws.distribution.production.datahub-sts.de/DeliveryPlatform/websocket/ServiceRegistration"
+    vulcano.logRequests: "false"           # flip to "true" to log every outgoing Vulcano API call
+```
+
+The connector requires Mongo (it uses its own DB). Override `vulcano.base.url` if Vulcano is reached via a different service name (e.g. when running in a non-namespaced setup).
+
+### Spring Boot MongoDB binding (legacy vs. new)
+
+Since chart **1.2.0** the MongoDB env vars are emitted under **both** key prefixes on every pod that talks to Mongo (vulcano, dflconnector):
+
+| Prefix | Used by |
+|---|---|
+| `spring.data.mongodb.*` | Spring Boot ≤ 3.3 |
+| `spring.mongodb.*`      | Spring Boot ≥ 3.4 (renamed binding) |
+
+You don't need to configure anything to get both — the chart's `vulcano.mongodb.env` template emits the full set automatically. This lets the chart work against apps before and after the Spring Boot upgrade without per-pod overrides.
+
+
+{{ template "chart.valuesSection" . }}
+
+------
+
+Autogenerated from chart metadata using [helm-docs](https://github.com/norwoodj/helm-docs)

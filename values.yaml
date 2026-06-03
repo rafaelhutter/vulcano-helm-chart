@@ -418,6 +418,71 @@ mongodb:
   metrics:
     enabled: false
 
+# -- MongoDB → S3 backup (optional)
+# Runs the moovit/mongodb-s3-backup image as a long-running Deployment that
+# `mongodump`s MongoDB and uploads to S3 (initial backup on start, then the
+# image's own internal ~24h loop — same as the Docker Swarm setup). Enable it
+# in the release that owns the MongoDB you want to back up (e.g. vulcano-common
+# for the shared instance). Connection details default to the chart's mongodb.*
+# config; only the S3 destination + AWS credentials are required.
+mongoBackup:
+  # -- Enable the MongoDB backup Deployment
+  enabled: false
+  image:
+    # -- Backup image repository
+    repository: docker.io/moovit/mongodb-s3-backup
+    # -- Backup image tag
+    tag: latest
+    # -- Backup image pull policy
+    pullPolicy: IfNotPresent
+  # -- Take a backup immediately on pod start (INIT_BACKUP). After that the
+  # image loops on its own internal ~24h timer.
+  initBackup: true
+  # -- Timezone for the container (IANA name); affects backup timestamp naming. Empty = UTC.
+  timezone: "Europe/Berlin"
+  # -- Number of backups to keep in S3 (older ones are pruned)
+  retainCount: 30
+  # -- Specific database to dump (MONGODB_DB). Empty = all databases.
+  database: ""
+  # -- Extra mongodump flags. Defaults pin the auth database for the root user.
+  extraOpts: "--authenticationDatabase admin"
+  # -- MongoDB connection overrides. Blank values derive from the mongodb.* config.
+  mongo:
+    # -- Override MongoDB host (default: derived from mongodb config)
+    host: ""
+    # -- MongoDB port
+    port: 27017
+    # -- Override MongoDB user (default: mongodb.auth.rootUsername)
+    username: ""
+  s3:
+    # -- Target S3 bucket name
+    bucket: ""
+    # -- Folder/prefix inside the bucket
+    backupFolder: ""
+    # -- Bucket region (BUCKET_REGION). Optional.
+    region: ""
+    # -- Custom S3-compatible endpoint URL (ENDPOINT_URL). Optional.
+    endpointUrl: ""
+    # -- Name of an existing Secret holding the AWS credentials. When set, the
+    # chart does NOT create the mongo-backup-credentials secret.
+    existingSecret: ""
+    # -- Key in existingSecret holding the access key id
+    existingSecretAccessKeyIdKey: "AWS_ACCESS_KEY_ID"
+    # -- Key in existingSecret holding the secret access key
+    existingSecretSecretAccessKeyKey: "AWS_SECRET_ACCESS_KEY"
+    # -- AWS access key id (used only when existingSecret is empty; put in values.secret.yaml)
+    accessKeyId: ""
+    # -- AWS secret access key (used only when existingSecret is empty; put in values.secret.yaml)
+    secretAccessKey: ""
+  # -- Resource requests/limits for the backup container
+  resources: {}
+  # -- Node selector for the backup pod (falls back to chart-level nodeSelector)
+  nodeSelector: {}
+  # -- Tolerations for the backup pod (falls back to chart-level tolerations)
+  tolerations: []
+  # -- Affinity for the backup pod (falls back to chart-level affinity)
+  affinity: {}
+
 # -- RabbitMQ Configuration
 rabbitmq:
   # -- Enable RabbitMQ deployment as part of this release.

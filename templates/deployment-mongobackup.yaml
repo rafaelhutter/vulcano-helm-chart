@@ -1,0 +1,112 @@
+{{- if .Values.mongoBackup.enabled }}
+{{- $mb := .Values.mongoBackup }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo-backup
+  namespace: {{ include "vulcano.namespace" . }}
+  labels:
+    {{- include "vulcano.labels" . | nindent 4 }}
+    app: mongo-backup
+spec:
+  replicas: 1
+  # Recreate: never run two backup daemons at once (they would race on the
+  # S3 "latest" pointer and retention pruning during a rollout).
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "vulcano.selectorLabels" . | nindent 6 }}
+      app: mongo-backup
+  template:
+    metadata:
+      labels:
+        {{- include "vulcano.selectorLabels" . | nindent 8 }}
+        app: mongo-backup
+    spec:
+      {{- if .Values.imagePullSecrets.enabled }}
+      imagePullSecrets:
+        {{- range .Values.imagePullSecrets.secrets }}
+        - name: {{ .name }}
+        {{- end }}
+      {{- end }}
+      containers:
+        - name: mongo-backup
+          image: "{{ $mb.image.repository }}:{{ $mb.image.tag }}"
+          imagePullPolicy: {{ $mb.image.pullPolicy | default "IfNotPresent" }}
+          env:
+            # The moovit image is a long-running daemon: it takes a backup on
+            # start (when initBackup=true) and then loops on its own internal
+            # ~24h timer. Kubernetes keeps the single pod running (restart=Always).
+            {{- if $mb.initBackup }}
+            - name: INIT_BACKUP
+              value: "true"
+            {{- end }}
+            # MongoDB connection — host/user/password derive from the chart's
+            # mongodb.* configuration unless explicitly overridden here.
+            - name: MONGODB_HOST
+              value: {{ $mb.mongo.host | default (include "vulcano.mongodb.host" .) | quote }}
+            - name: MONGODB_PORT
+              value: {{ $mb.mongo.port | default 27017 | quote }}
+            - name: MONGODB_USER
+              value: {{ $mb.mongo.username | default .Values.mongodb.auth.rootUsername | default "root" | quote }}
+            - name: MONGODB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "vulcano.mongodb.secretName" . }}
+                  key: {{ include "vulcano.mongodb.secretPasswordKey" . }}
+            {{- with $mb.database }}
+            - name: MONGODB_DB
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with $mb.extraOpts }}
+            - name: EXTRA_OPTS
+              value: {{ . | quote }}
+            {{- end }}
+            # S3 destination
+            - name: BUCKET
+              value: {{ $mb.s3.bucket | quote }}
+            - name: BACKUP_FOLDER
+              value: {{ $mb.s3.backupFolder | quote }}
+            {{- with $mb.s3.region }}
+            - name: BUCKET_REGION
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with $mb.s3.endpointUrl }}
+            - name: ENDPOINT_URL
+              value: {{ . | quote }}
+            {{- end }}
+            - name: RETAIN_COUNT
+              value: {{ $mb.retainCount | default 30 | quote }}
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $mb.s3.existingSecret | default "mongo-backup-credentials" }}
+                  key: {{ $mb.s3.existingSecretAccessKeyIdKey | default "AWS_ACCESS_KEY_ID" }}
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $mb.s3.existingSecret | default "mongo-backup-credentials" }}
+                  key: {{ $mb.s3.existingSecretSecretAccessKeyKey | default "AWS_SECRET_ACCESS_KEY" }}
+            {{- with $mb.timezone }}
+            - name: TZ
+              value: {{ . | quote }}
+            {{- end }}
+          {{- with $mb.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with (default .Values.nodeSelector $mb.nodeSelector) }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with (default .Values.affinity $mb.affinity) }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with (default .Values.tolerations $mb.tolerations) }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}
