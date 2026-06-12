@@ -1,6 +1,6 @@
 # vulcano
 
-![Version: 1.5.1](https://img.shields.io/badge/Version-1.5.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.9.31](https://img.shields.io/badge/AppVersion-1.9.31-informational?style=flat-square)
+![Version: 1.6.0](https://img.shields.io/badge/Version-1.6.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.9.31](https://img.shields.io/badge/AppVersion-1.9.31-informational?style=flat-square)
 
 Vulcano - Complete application deployment with MongoDB, RabbitMQ, and optional CSI driver
 
@@ -658,7 +658,9 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | auth.microsoft.clientId | string | `nil` | Microsoft Azure AD client ID |
 | auth.mode | string | `"MICROSOFT"` | Authentication mode (MICROSOFT, KEYCLOAK, HELMUT, BID) |
 | auth.secret | string | `nil` | Authentication secret key |
-| auth.serviceAdminPassword | string | `nil` | Service admin password for authentication |
+| auth.serviceAdminPassword | string | `nil` | Service admin password for authentication. Stored in the vulcano-credentials Secret and shared by the vulcano, dflconnector and filetransfer deployments. |
+| auth.serviceAdminPasswordExistingSecret | string | `""` | Name of an existing K8s Secret holding the service admin password. When set, serviceAdminPassword is ignored, the chart does NOT write it to vulcano-credentials, and all three deployments read it from this Secret (keeps it out of values/Git). |
+| auth.serviceAdminPasswordExistingSecretKey | string | `"service-admin-password"` | Key inside serviceAdminPasswordExistingSecret that holds the password. |
 | dataFeedMapping.ignoreDelete | string | `"false"` | Ignore Delete Messages from Datafeed |
 | dataFeedMapping.skipUpdates | string | `"false"` | Skip Asset Creation for Updates from Datafeed |
 | dflconnector | object | `{"enabled":false,"port":8080,"properties":{"logging.level.de.moovit.vulcanodflconnector":"INFO","logging.level.root":"INFO","logstash.enabled":"false","server.port":"8080","vulcano.base.url":"http://vulcano:8889/","vulcano.cache.db.expireAfterWriteMinutes":"15","vulcano.cache.db.maximumSize":"1000","vulcano.cache.http.expireAfterWriteMinutes":"1","vulcano.cache.http.maximumSize":"500","vulcano.dfl.competitionId":"","vulcano.dfl.listOfServicesUrl":"https://httpget.distribution.production.datahub-sts.de/DeliveryPlatform/REST/ListOfServices/{clientId}","vulcano.dfl.liveTableParameters":"","vulcano.dfl.pullOnceUrl":"https://httpget.distribution.production.datahub-sts.de/DeliveryPlatform/REST/PullOnce/{clientId}/{serviceId}/{parameterId}","vulcano.dfl.seasonId":"","vulcano.dfl.serviceInformationUrl":"https://httpget.distribution.production.datahub-sts.de/DeliveryPlatform/REST/ServiceInformation/{clientId}/{serviceId}","vulcano.dfl.services":"","vulcano.dfl.websocket.clientId":"","vulcano.dfl.websocket.clientName":"Vulcano","vulcano.dfl.websocket.connect-timeout":"30000","vulcano.dfl.websocket.max-message-size":"50MB","vulcano.dfl.websocket.message-timeout":"300000","vulcano.dfl.websocket.ping-interval-seconds":"10","vulcano.dfl.websocket.pong-timeout-millis":"20000","vulcano.dfl.websocket.url":"wss://ws.distribution.production.datahub-sts.de/DeliveryPlatform/websocket/ServiceRegistration","vulcano.logRequests":"false"},"resources":{"limits":{"cpu":"500m","memory":"512Mi"},"requests":{"cpu":"100m","memory":"256Mi"}}}` | ------------------------------------------------------------------------- |
