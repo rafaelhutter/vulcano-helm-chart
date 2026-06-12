@@ -131,6 +131,30 @@ mongodb-root-password
 {{- end }}
 
 {{/*
+License Secret name / key.
+The JWT license key is stored in a Secret (never the ConfigMap) so it doesn't
+sit in plaintext in Git or in a world-readable ConfigMap. Defaults to the
+chart-managed "vulcano-credentials" Secret; point at an externally managed
+Secret (e.g. a Bitwarden mapping) via license.existingSecret to keep the key
+out of values.yaml entirely.
+*/}}
+{{- define "vulcano.license.secretName" -}}
+{{- if .Values.vulcano.license.existingSecret -}}
+{{- .Values.vulcano.license.existingSecret -}}
+{{- else -}}
+vulcano-credentials
+{{- end -}}
+{{- end }}
+
+{{- define "vulcano.license.secretKey" -}}
+{{- if .Values.vulcano.license.existingSecret -}}
+{{- .Values.vulcano.license.existingSecretKey | default "license-key" -}}
+{{- else -}}
+license-key
+{{- end -}}
+{{- end }}
+
+{{/*
 MongoDB Spring Boot env vars.
 Emits each property under both the legacy `spring.data.mongodb.*` keys and the
 new `spring.mongodb.*` keys required since the Spring Boot upgrade, so the
