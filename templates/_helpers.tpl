@@ -103,6 +103,28 @@ service auth fails with 403 and the connectors crash-loop.
 {{- end }}
 
 {{/*
+Service-admin-password Secret name / key. Pairs with the three consumers
+(vulcano, dflconnector, filetransfer). Defaults to the chart-managed
+"vulcano-credentials" Secret; point at an externally managed Secret via
+auth.serviceAdminPasswordExistingSecret to keep the password out of values/Git.
+*/}}
+{{- define "vulcano.serviceAdminPassword.secretName" -}}
+{{- if .Values.auth.serviceAdminPasswordExistingSecret -}}
+{{- .Values.auth.serviceAdminPasswordExistingSecret -}}
+{{- else -}}
+vulcano-credentials
+{{- end -}}
+{{- end }}
+
+{{- define "vulcano.serviceAdminPassword.secretKey" -}}
+{{- if .Values.auth.serviceAdminPasswordExistingSecret -}}
+{{- .Values.auth.serviceAdminPasswordExistingSecretKey | default "service-admin-password" -}}
+{{- else -}}
+service-admin-password
+{{- end -}}
+{{- end }}
+
+{{/*
 MongoDB root-password Secret name.
 Single source of truth so the Vulcano env helper and the mongo-backup CronJob
 reference the same Secret. Mirrors the cloudpirates sub-chart, which names its

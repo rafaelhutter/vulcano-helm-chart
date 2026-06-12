@@ -68,8 +68,8 @@ spec:
             - name: vulcano.password
               valueFrom:
                 secretKeyRef:
-                  name: vulcano-credentials
-                  key: service-admin-password
+                  name: {{ include "vulcano.serviceAdminPassword.secretName" . }}
+                  key: {{ include "vulcano.serviceAdminPassword.secretKey" . }}
             - name: vulcano.username
               value: "service_admin"
 
