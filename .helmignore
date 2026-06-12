@@ -29,6 +29,8 @@
 /check-values.sh
 deployments/
 .claude/
+Backup SRG/
+tasks/
 
 # Old/large auxiliary docs not needed at runtime
 AI_AGENT_GUIDE.md
