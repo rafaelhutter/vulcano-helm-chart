@@ -142,12 +142,12 @@ chart works against apps using either binding.
 - name: {{ $prefix }}.host
   value: {{ include "vulcano.mongodb.host" $ | quote }}
 - name: {{ $prefix }}.port
-  value: "27017"
+  value: {{ $.Values.mongodb.port | default 27017 | quote }}
 - name: {{ $prefix }}.database
   value: {{ $.Values.mongodb.database | default "vulcano" | quote }}
 - name: {{ $prefix }}.authentication-database
   value: "admin"
-{{- if $.Values.mongodb.replicaSet.enabled }}
+{{- if ($.Values.mongodb.replicaSet | default dict).enabled }}
 - name: {{ $prefix }}.replica-set-name
   value: {{ $.Values.mongodb.replicaSet.name | quote }}
 {{- end }}
