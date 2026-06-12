@@ -380,6 +380,8 @@ mongodb:
   # Credentials from auth.rootUsername / auth.rootPassword (or auth.existingSecret) are still used.
   # Example: "mongodb-headless.vulcano-common.svc.cluster.local"
   externalHost: ""
+  # -- MongoDB port Vulcano connects to (defaults to 27017). Override for non-standard external ports.
+  port: 27017
   # -- Full name override for MongoDB resources
   fullnameOverride: "mongodb"
   # -- MongoDB database name used by Vulcano (defaults to 'vulcano' if not set)
@@ -492,6 +494,8 @@ rabbitmq:
   # Credentials from auth.username / auth.password (or auth.existingSecret) are still used.
   # Example: "rabbitmq.vulcano-common.svc.cluster.local"
   externalHost: ""
+  # -- RabbitMQ AMQP port Vulcano connects to (defaults to 5672). Override for non-standard external ports.
+  port: 5672
   # -- Full name override for RabbitMQ resources
   fullnameOverride: "rabbitmq"
   # -- Number of RabbitMQ replicas
