@@ -1,6 +1,6 @@
 # vulcano
 
-![Version: 1.4.0](https://img.shields.io/badge/Version-1.4.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.9.31](https://img.shields.io/badge/AppVersion-1.9.31-informational?style=flat-square)
+![Version: 1.5.0](https://img.shields.io/badge/Version-1.5.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.9.31](https://img.shields.io/badge/AppVersion-1.9.31-informational?style=flat-square)
 
 Vulcano - Complete application deployment with MongoDB, RabbitMQ, and optional CSI driver
 
@@ -819,7 +819,7 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | mongoBackup.s3.secretAccessKey | string | `""` | AWS secret access key (used only when existingSecret is empty; put in values.secret.yaml) |
 | mongoBackup.timezone | string | `"Europe/Berlin"` | Timezone for the container (IANA name); affects backup timestamp naming. Empty = UTC. |
 | mongoBackup.tolerations | list | `[]` | Tolerations for the backup pod (falls back to chart-level tolerations) |
-| mongodb | object | `{"auth":{"existingSecret":"","existingSecretPasswordKey":"mongodb-root-password","rootPassword":"bitte","rootUsername":"root"},"database":"vulcano","enabled":true,"externalHost":"","fullnameOverride":"mongodb","metrics":{"enabled":false},"persistence":{"enabled":true,"size":"50Gi","storageClassName":""},"replicaCount":3,"resources":{"limits":{"cpu":"2000m","memory":"4Gi"},"requests":{"cpu":"1000m","memory":"2Gi"}}}` | MongoDB Configuration |
+| mongodb | object | `{"auth":{"existingSecret":"","existingSecretPasswordKey":"mongodb-root-password","rootPassword":"bitte","rootUsername":"root"},"database":"vulcano","enabled":true,"externalHost":"","fullnameOverride":"mongodb","metrics":{"enabled":false},"persistence":{"enabled":true,"size":"50Gi","storageClassName":""},"port":27017,"replicaCount":3,"resources":{"limits":{"cpu":"2000m","memory":"4Gi"},"requests":{"cpu":"1000m","memory":"2Gi"}}}` | MongoDB Configuration |
 | mongodb.auth.existingSecret | string | `""` | Name of an existing Kubernetes Secret containing MongoDB credentials. When set, rootPassword is ignored and the chart will NOT create a mongodb-credentials secret. |
 | mongodb.auth.existingSecretPasswordKey | string | `"mongodb-root-password"` | Key inside existingSecret that holds the root password (chart default: "mongodb-root-password") |
 | mongodb.auth.rootPassword | string | `"bitte"` | MongoDB root password (ignored when existingSecret is set) |
@@ -831,6 +831,7 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | mongodb.persistence.enabled | bool | `true` | Enable MongoDB persistence |
 | mongodb.persistence.size | string | `"50Gi"` | MongoDB persistent volume size |
 | mongodb.persistence.storageClassName | string | `""` | Storage class name for MongoDB |
+| mongodb.port | int | `27017` | MongoDB port Vulcano connects to (defaults to 27017). Override for non-standard external ports. |
 | mongodb.replicaCount | int | `3` | Number of MongoDB replicas |
 | nameOverride | string | `""` | Override the chart name |
 | ndr.bidLookupUrl | string | `""` |  |
@@ -845,7 +846,7 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | octopus.username | string | `""` |  |
 | project.delete.ownerOnly | string | `"true"` | Only allow project deletion by the owner |
 | project.sendToUrls | string | `""` | URLs to send project data to external systems |
-| rabbitmq | object | `{"auth":{"erlangCookie":"VULCANO_SECRET_COOKIE","existingErlangCookieKey":"erlang-cookie","existingPasswordKey":"password","existingSecret":"","password":"vulcano0479","username":"vulcano"},"enabled":true,"externalHost":"","fullnameOverride":"rabbitmq","jobUpdateQueue":"vulcano-job-updates","metrics":{"enabled":false},"persistence":{"enabled":false},"replicaCount":3,"resources":{"limits":{"cpu":"1000m","memory":"2Gi"},"requests":{"cpu":"500m","memory":"1Gi"}},"service":{"type":"NodePort"}}` | RabbitMQ Configuration |
+| rabbitmq | object | `{"auth":{"erlangCookie":"VULCANO_SECRET_COOKIE","existingErlangCookieKey":"erlang-cookie","existingPasswordKey":"password","existingSecret":"","password":"vulcano0479","username":"vulcano"},"enabled":true,"externalHost":"","fullnameOverride":"rabbitmq","jobUpdateQueue":"vulcano-job-updates","metrics":{"enabled":false},"persistence":{"enabled":false},"port":5672,"replicaCount":3,"resources":{"limits":{"cpu":"1000m","memory":"2Gi"},"requests":{"cpu":"500m","memory":"1Gi"}},"service":{"type":"NodePort"}}` | RabbitMQ Configuration |
 | rabbitmq.auth.erlangCookie | string | `"VULCANO_SECRET_COOKIE"` | Erlang cookie for RabbitMQ clustering (ignored when existingSecret is set) |
 | rabbitmq.auth.existingErlangCookieKey | string | `"erlang-cookie"` | Key inside existingSecret that holds the Erlang cookie |
 | rabbitmq.auth.existingPasswordKey | string | `"password"` | Key inside existingSecret that holds the RabbitMQ password. Default "password" matches the keys written by the cloudpirates/rabbitmq sub-chart's own Secret. Override only when pointing at an externally managed Secret that uses a different key name (e.g. "rabbitmq-password" from a Bitwarden mapping or legacy Bitnami secret). |
@@ -858,6 +859,7 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | rabbitmq.jobUpdateQueue | string | `"vulcano-job-updates"` | Name of the RabbitMQ queue used as the return channel from render nodes back to the server. Only set this if you need to run multiple isolated Vulcano instances sharing the same RabbitMQ broker. Defaults to "vulcano-job-updates" when not set. |
 | rabbitmq.metrics.enabled | bool | `false` | Enable RabbitMQ metrics |
 | rabbitmq.persistence.enabled | bool | `false` | Enable RabbitMQ persistence |
+| rabbitmq.port | int | `5672` | RabbitMQ AMQP port Vulcano connects to (defaults to 5672). Override for non-standard external ports. |
 | rabbitmq.replicaCount | int | `3` | Number of RabbitMQ replicas |
 | rabbitmq.service.type | string | `"NodePort"` | RabbitMQ service type (ClusterIP, NodePort, LoadBalancer) |
 | rbac.create | bool | `true` |  |
@@ -930,7 +932,10 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | vulcano.ingress.hosts | list | `["vulcano.example.com"]` | Ingress hosts (supports multiple domains) |
 | vulcano.ingress.path | string | `"/"` |  |
 | vulcano.ingress.tls | object | `{"enabled":false,"existing":{"secretName":"tls-vulcano-cert"},"letsencrypt":{"clusterIssuer":"letsencrypt-prod","email":"admin@example.com","enabled":false},"source":"letsencrypt"}` | Enable TLS |
-| vulcano.license | object | `{"key":""}` | JWT license key for application licensing |
+| vulcano.license | object | `{"existingSecret":"","existingSecretKey":"license-key","key":""}` | JWT license key for application licensing. Stored in a Secret (vulcano-credentials), never the ConfigMap. To keep the key out of values.yaml/Git entirely, leave `key` empty and reference an externally managed Secret via `existingSecret`. |
+| vulcano.license.existingSecret | string | `""` | Name of an existing Secret holding the license key. When set, `key` is ignored and the chart does NOT store the license in vulcano-credentials. |
+| vulcano.license.existingSecretKey | string | `"license-key"` | Key inside existingSecret that holds the license JWT (default: license-key). |
+| vulcano.license.key | string | `""` | License JWT. When set (and existingSecret is empty), written to the vulcano-credentials Secret under key `license-key`. |
 | vulcano.livenessProbe.enabled | bool | `false` |  |
 | vulcano.livenessProbe.failureThreshold | int | `3` |  |
 | vulcano.livenessProbe.initialDelaySeconds | int | `30` |  |
