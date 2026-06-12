@@ -5,3 +5,4 @@ check-values.sh
 install-values.yaml
 *.secret.yaml
 AI_AGENT_GUIDE.md
+Backup SRG/
