@@ -223,6 +223,7 @@ spec:
                   key: spring.servlet.multipart.max-request-size
 
             # Integration Secrets
+            {{- if or .Values.integrations.helmut.existingSecret (coalesce .Values.integrations.helmut.clientSecret .Values.helmut.clientSecret) }}
             - name: vulcano.data.helmut.clientSecret
               valueFrom:
                 secretKeyRef:
@@ -233,6 +234,8 @@ spec:
                   name: helmut-credentials
                   key: helmut-client-secret
                   {{- end }}
+            {{- end }}
+            {{- if or .Values.integrations.ndr.existingSecret .Values.integrations.ndr.vdbPassword }}
             - name: ndr.vdb.password
               valueFrom:
                 secretKeyRef:
@@ -243,6 +246,7 @@ spec:
                   name: ndr-credentials
                   key: ndr-vdb-password
                   {{- end }}
+            {{- end }}
             {{- if or .Values.integrations.vidispine.baseUrl .Values.vidispine.baseUrl }}
             - name: vulcano.vidispine.clientSecret
               valueFrom:
