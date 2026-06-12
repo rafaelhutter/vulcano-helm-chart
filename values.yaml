@@ -997,8 +997,15 @@ auth:
     authority:
     # -- Microsoft Azure AD client ID
     clientId:
-  # -- Service admin password for authentication
+  # -- Service admin password for authentication. Stored in the vulcano-credentials
+  # Secret and shared by the vulcano, dflconnector and filetransfer deployments.
   serviceAdminPassword:
+  # -- Name of an existing K8s Secret holding the service admin password. When set,
+  # serviceAdminPassword is ignored, the chart does NOT write it to vulcano-credentials,
+  # and all three deployments read it from this Secret (keeps it out of values/Git).
+  serviceAdminPasswordExistingSecret: ""
+  # -- Key inside serviceAdminPasswordExistingSecret that holds the password.
+  serviceAdminPasswordExistingSecretKey: "service-admin-password"
   keycloak:
     # -- Keycloak authority URL
     authority:

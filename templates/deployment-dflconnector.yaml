@@ -51,8 +51,8 @@ spec:
             - name: vulcano.base.service_admin_password
               valueFrom:
                 secretKeyRef:
-                  name: vulcano-credentials
-                  key: service-admin-password
+                  name: {{ include "vulcano.serviceAdminPassword.secretName" . }}
+                  key: {{ include "vulcano.serviceAdminPassword.secretKey" . }}
             # MongoDB – derived from chart-level mongodb configuration
             {{- include "vulcano.mongodb.env" . | nindent 12 }}
 
