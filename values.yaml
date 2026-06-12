@@ -256,9 +256,19 @@ vulcano:
     # -- Disable the web-based configuration interface
     disable: "false"
 
-  # -- JWT license key for application licensing
+  # -- JWT license key for application licensing.
+  # Stored in a Secret (vulcano-credentials), never the ConfigMap. To keep the
+  # key out of values.yaml/Git entirely, leave `key` empty and reference an
+  # externally managed Secret via `existingSecret`.
   license:
+    # -- License JWT. When set (and existingSecret is empty), written to the
+    # vulcano-credentials Secret under key `license-key`.
     key: ""
+    # -- Name of an existing Secret holding the license key. When set, `key` is
+    # ignored and the chart does NOT store the license in vulcano-credentials.
+    existingSecret: ""
+    # -- Key inside existingSecret that holds the license JWT (default: license-key).
+    existingSecretKey: "license-key"
 
   graphicGenerator:
     rendition:

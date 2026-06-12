@@ -118,6 +118,16 @@ spec:
                   {{- end }}
             {{- end }}
 
+            # License Configuration — sourced from a Secret, never the ConfigMap,
+            # so the JWT key doesn't sit in plaintext in Git or the ConfigMap.
+            {{- if or .Values.vulcano.license.key .Values.vulcano.license.existingSecret }}
+            - name: vulcano.license.key
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "vulcano.license.secretName" . }}
+                  key: {{ include "vulcano.license.secretKey" . }}
+            {{- end }}
+
             # Folder Configuration
             - name: vulcano.pathmap.rendernode
               valueFrom:

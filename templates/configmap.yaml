@@ -219,7 +219,9 @@ data:
   vulcano.jobUpdateQueue: {{ .Values.rabbitmq.jobUpdateQueue | default "vulcano-job-updates" | quote }}
 
   # License Configuration
-  vulcano.license.key: {{ .Values.vulcano.license.key | default "" | quote }}
+  # NOTE: vulcano.license.key is intentionally NOT stored here — it lives in a
+  # Secret (vulcano-credentials or license.existingSecret) and is injected as an
+  # env var by deployment-vulcano.yaml so it never sits in plaintext.
 
   # Graphic Generator - named rendition formats (e.g. social media sizes)
   graphicGenerator.rendition.formats: {{ .Values.vulcano.graphicGenerator.rendition.formats | default "" | quote }}
