@@ -218,6 +218,105 @@ To restore later, copy the archive back to a Mongo pod and run
 `mongorestore --gzip --archive=/tmp/mongo-...gz --drop --db <database> ...`
 against the new instance.
 
+### Migrating an existing database into the chart
+
+When you move a Vulcano instance from an older/external deployment onto this
+chart, the on-disk PVC reuse described above (`existingClaim`) only works if the
+old data lives in a PVC the new StatefulSet can adopt. When it doesn't — the
+source is a different cluster, a standalone Docker MongoDB, or a managed
+database — migrate the data with a logical `mongodump` / `mongorestore`.
+
+> **The Vulcano backend must NOT be running while the restore happens.** A
+> running backend reads and writes the database concurrently, which races the
+> restore and can corrupt or partially overwrite the imported data. Restore into
+> a fresh MongoDB *before* the backend starts, or scale the backend to zero
+> first (see step 3).
+
+**1. Dump the source database (old environment)**
+
+Run this against the **source** MongoDB — adjust host, credentials and
+`--db` to match the system you are migrating away from:
+
+```bash
+STAMP=$(date +%Y%m%d-%H%M)
+
+# Against a Mongo running in Kubernetes:
+kubectl exec -n <old-ns> <old-mongo-pod> -- \
+  mongodump --host localhost:27017 -u <user> -p <password> \
+            --authenticationDatabase admin --db <database> --gzip \
+            --archive=/tmp/vulcano-${STAMP}.gz
+
+kubectl cp <old-ns>/<old-mongo-pod>:/tmp/vulcano-${STAMP}.gz ./vulcano-${STAMP}.gz
+
+# …or against a standalone / external Mongo reachable from your machine:
+# mongodump --uri "mongodb://<user>:<password>@<host>:27017" \
+#           --db <database> --gzip --archive=./vulcano-${STAMP}.gz
+```
+
+Keep this archive safe — it is your rollback point.
+
+**2. Deploy the chart (backend will start empty)**
+
+Install/upgrade the release as usual. The new MongoDB comes up empty (or with
+whatever the adopted PVC already held). The backend will start and connect to
+the empty database — that's fine, you stop it in the next step before restoring.
+
+**3. Stop the Vulcano backend**
+
+Scale the backend deployment to zero so nothing touches the database during the
+restore:
+
+```bash
+kubectl scale deployment vulcano -n <ns> --replicas=0
+kubectl get pods -n <ns> -l app=vulcano   # confirm none Running
+```
+
+> Tip: if you control the rollout, you can also skip step 2's backend entirely
+> by restoring before the very first deploy — but scaling to zero is the
+> reliable, repeatable path.
+
+**4. Restore into the new MongoDB**
+
+Copy the archive to a Mongo pod and `mongorestore` it. On a replica set, target
+the **primary**; `--drop` clears the (empty/stale) target collections first:
+
+```bash
+NS=<ns>; DB=<database>
+MONGO_PW=$(kubectl get secret mongodb -n "$NS" \
+  -o jsonpath='{.data.mongodb-root-password}' | base64 -d)
+
+# Find the primary (single-node sets just return mongodb-0):
+PRIMARY=$(kubectl exec -n "$NS" mongodb-0 -- \
+  mongosh --quiet -u root -p "$MONGO_PW" --authenticationDatabase admin \
+    --eval "rs.status().members.find(m => m.stateStr === 'PRIMARY').name" \
+  | cut -d. -f1 | tr -d '\r')
+PRIMARY=${PRIMARY:-mongodb-0}
+
+kubectl cp ./vulcano-<stamp>.gz "$NS/$PRIMARY:/tmp/restore.gz"
+
+kubectl exec -n "$NS" "$PRIMARY" -- \
+  mongorestore --host localhost:27017 -u root -p "$MONGO_PW" \
+               --authenticationDatabase admin --db "$DB" \
+               --gzip --archive=/tmp/restore.gz --drop \
+               --numParallelCollections=1
+
+kubectl exec -n "$NS" "$PRIMARY" -- rm -f /tmp/restore.gz
+```
+
+If your dump used `--db` (namespaced archive), `mongorestore --db "$DB"` lands
+it in the same database. For a full-cluster archive drop the `--db` flag on both
+commands.
+
+**5. Restart the Vulcano backend**
+
+```bash
+kubectl scale deployment vulcano -n <ns> --replicas=1
+kubectl rollout status deployment vulcano -n <ns>
+```
+
+Verify the application sees the migrated data, then delete the source archive
+once you're confident the migration succeeded.
+
 ### Automated MongoDB Backups (S3)
 
 For off-cluster backups the chart ships an optional `mongoBackup` component: a
