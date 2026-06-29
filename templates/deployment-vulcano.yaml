@@ -288,6 +288,10 @@ spec:
                   {{- end }}
             {{- end }}
 
+            {{- with .Values.vulcano.extraEnvVars }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+
           envFrom:
             # Load all configuration from ConfigMap as env vars
             - configMapRef:
