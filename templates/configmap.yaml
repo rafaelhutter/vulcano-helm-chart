@@ -6,6 +6,10 @@ metadata:
   namespace: {{ include "vulcano.namespace" . }}
   labels:
     {{- include "vulcano.labels" . | nindent 4 }}
+  {{- with (include "vulcano.commonAnnotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
 data:
   # Logging Configuration
   logging.file.name: {{ .Values.logging.fileName }}
@@ -238,6 +242,10 @@ metadata:
   namespace: {{ include "vulcano.namespace" . }}
   labels:
     {{- include "vulcano.labels" . | nindent 4 }}
+  {{- with (include "vulcano.commonAnnotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
 data:
   admin-users.txt: |
 {{ .Values.adminUsers | indent 4 }}

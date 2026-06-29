@@ -6,6 +6,11 @@ nameOverride: ""
 # -- Override the full release name
 fullnameOverride: ""
 
+# -- Labels to add to all deployed objects
+commonLabels: {}
+# -- Annotations to add to all deployed objects
+commonAnnotations: {}
+
 # -- Global configuration for the Vulcano deployment
 global:
   # -- Kubernetes namespace for the deployment
