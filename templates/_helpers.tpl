@@ -53,6 +53,20 @@ Common annotations – emits the map body (no "annotations:" key).
 {{- end }}
 
 {{/*
+ConfigMap name for the main vulcano-config map.
+*/}}
+{{- define "vulcano.configmapName" -}}
+{{- printf "%s-config" (include "vulcano.fullname" .) -}}
+{{- end }}
+
+{{/*
+ConfigMap name for the admin-users list.
+*/}}
+{{- define "vulcano.adminUsersConfigmapName" -}}
+{{- printf "%s-admin-users" (include "vulcano.fullname" .) -}}
+{{- end }}
+
+{{/*
 Selector labels
 */}}
 {{- define "vulcano.selectorLabels" -}}
