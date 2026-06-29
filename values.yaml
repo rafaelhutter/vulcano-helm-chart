@@ -399,6 +399,13 @@ mongodb:
   # -- Number of MongoDB replicas
   replicaCount: 3
 
+  replicaSet:
+    # -- Enable MongoDB replica set mode. Required when replicaCount > 1.
+    # Switches the connection to the headless service and emits replica-set-name.
+    enabled: true
+    # -- MongoDB replica set name. Must match the name the sub-chart was initialized with.
+    name: "rs0"
+
   auth:
     # -- MongoDB root username
     rootUsername: "root"

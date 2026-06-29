@@ -274,7 +274,15 @@
         "externalHost": { "type": "string" },
         "fullnameOverride": { "type": "string" },
         "database": { "type": "string" },
+        "port": { "type": "integer" },
         "replicaCount": { "type": "integer", "minimum": 1 },
+        "replicaSet": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "name": { "type": "string" }
+          }
+        },
         "auth": {
           "type": "object",
           "properties": {
