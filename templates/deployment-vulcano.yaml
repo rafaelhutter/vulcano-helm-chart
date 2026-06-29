@@ -7,6 +7,10 @@ metadata:
   labels:
     {{- include "vulcano.labels" . | nindent 4 }}
     app: vulcano
+  {{- with (include "vulcano.commonAnnotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
 spec:
   replicas: {{ .Values.vulcano.replicaCount }}
   strategy:

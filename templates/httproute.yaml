@@ -12,6 +12,10 @@ metadata:
   labels:
     {{- include "vulcano.labels" . | nindent 4 }}
     app: vulcano
+  {{- with (include "vulcano.commonAnnotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
 spec:
   parentRefs:
     - name: {{ required "vulcano.gateway.parentRef.name is required when vulcano.gateway.enabled=true" .Values.vulcano.gateway.parentRef.name }}

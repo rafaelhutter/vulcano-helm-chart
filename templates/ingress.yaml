@@ -8,8 +8,8 @@ metadata:
     {{- include "vulcano.labels" . | nindent 4 }}
     app: vulcano
   annotations:
-    {{- if .Values.vulcano.ingress.annotations }}
-    {{- toYaml .Values.vulcano.ingress.annotations | nindent 4 }}
+    {{- with .Values.vulcano.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
     {{- end }}
     {{- if and .Values.vulcano.ingress.tls.enabled (eq .Values.vulcano.ingress.tls.source "letsencrypt") .Values.vulcano.ingress.tls.letsencrypt.enabled }}
     cert-manager.io/cluster-issuer: {{ .Values.vulcano.ingress.tls.letsencrypt.clusterIssuer | quote }}
@@ -17,6 +17,7 @@ metadata:
     cert-manager.io/issuer-email: {{ .Values.vulcano.ingress.tls.letsencrypt.email | quote }}
     {{- end }}
     {{- end }}
+    {{- include "vulcano.commonAnnotations" . | nindent 4 }}
 spec:
   {{- if .Values.vulcano.ingress.className }}
   ingressClassName: {{ .Values.vulcano.ingress.className }}

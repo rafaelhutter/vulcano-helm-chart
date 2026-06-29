@@ -38,6 +38,18 @@ helm.sh/chart: {{ include "vulcano.chart" . }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- with .Values.commonLabels }}
+{{ toYaml . }}
+{{- end }}
+{{- end }}
+
+{{/*
+Common annotations – emits the map body (no "annotations:" key).
+*/}}
+{{- define "vulcano.commonAnnotations" -}}
+{{- with .Values.commonAnnotations }}
+{{- toYaml . }}
+{{- end }}
 {{- end }}
 
 {{/*
