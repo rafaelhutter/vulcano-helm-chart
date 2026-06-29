@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: vulcano-config
+  name: {{ include "vulcano.configmapName" . }}
   namespace: {{ include "vulcano.namespace" . }}
   labels:
     {{- include "vulcano.labels" . | nindent 4 }}
@@ -238,7 +238,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: admin-users
+  name: {{ include "vulcano.adminUsersConfigmapName" . }}
   namespace: {{ include "vulcano.namespace" . }}
   labels:
     {{- include "vulcano.labels" . | nindent 4 }}

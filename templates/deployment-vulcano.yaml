@@ -2,7 +2,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: vulcano
+  name: {{ include "vulcano.fullname" . }}
   namespace: {{ include "vulcano.namespace" . }}
   labels:
     {{- include "vulcano.labels" . | nindent 4 }}
@@ -136,81 +136,81 @@ spec:
             - name: vulcano.pathmap.rendernode
               valueFrom:
                 configMapKeyRef:
-                  name: vulcano-config
+                  name: {{ include "vulcano.configmapName" $ }}
                   key: vulcano.pathmap.rendernode
             - name: vulcano.pathmap.server
               valueFrom:
                 configMapKeyRef:
-                  name: vulcano-config
+                  name: {{ include "vulcano.configmapName" $ }}
                   key: vulcano.pathmap.server
             - name: vulcano.customCertficates
               valueFrom:
                 configMapKeyRef:
-                  name: vulcano-config
+                  name: {{ include "vulcano.configmapName" $ }}
                   key: vulcano.customCertficates
             - name: vulcano.folderscanner.templates
               valueFrom:
                 configMapKeyRef:
-                  name: vulcano-config
+                  name: {{ include "vulcano.configmapName" $ }}
                   key: vulcano.folderscanner.templates
             - name: vulcano.folderscanner.mediaFolder
               valueFrom:
                 configMapKeyRef:
-                  name: vulcano-config
+                  name: {{ include "vulcano.configmapName" $ }}
                   key: vulcano.folderscanner.mediaFolder
             - name: vulcano.folderscanner.proxyFolder
               valueFrom:
                 configMapKeyRef:
-                  name: vulcano-config
+                  name: {{ include "vulcano.configmapName" $ }}
                   key: vulcano.folderscanner.proxyFolder
             - name: vulcano.folderscanner.thumbFolder
               valueFrom:
                 configMapKeyRef:
-                  name: vulcano-config
+                  name: {{ include "vulcano.configmapName" $ }}
                   key: vulcano.folderscanner.thumbFolder
 
             # Scanner Configuration
             - name: vulcano.folderscanner.startWatcher
               valueFrom:
                 configMapKeyRef:
-                  name: vulcano-config
+                  name: {{ include "vulcano.configmapName" $ }}
                   key: vulcano.folderscanner.startWatcher
             - name: vulcano.folderscanner.defaultBin
               valueFrom:
                 configMapKeyRef:
-                  name: vulcano-config
+                  name: {{ include "vulcano.configmapName" $ }}
                   key: vulcano.folderscanner.defaultBin
 
             # Feature Configuration
             - name: vulcano.afx.render
               valueFrom:
                 configMapKeyRef:
-                  name: vulcano-config
+                  name: {{ include "vulcano.configmapName" $ }}
                   key: vulcano.afx.render
 
             # Housekeeping Configuration
             - name: vulcano.housekeeping.enabled
               valueFrom:
                 configMapKeyRef:
-                  name: vulcano-config
+                  name: {{ include "vulcano.configmapName" $ }}
                   key: vulcano.housekeeping.enabled
 
             # Authentication
             - name: login.mode
               valueFrom:
                 configMapKeyRef:
-                  name: vulcano-config
+                  name: {{ include "vulcano.configmapName" $ }}
                   key: login.mode
             {{- if eq .Values.auth.mode "MICROSOFT" }}
             - name: microsoft.auth.authority
               valueFrom:
                 configMapKeyRef:
-                  name: vulcano-config
+                  name: {{ include "vulcano.configmapName" $ }}
                   key: microsoft.auth.authority
             - name: microsoft.auth.clientId
               valueFrom:
                 configMapKeyRef:
-                  name: vulcano-config
+                  name: {{ include "vulcano.configmapName" $ }}
                   key: microsoft.auth.clientId
             {{- end }}
 
@@ -218,12 +218,12 @@ spec:
             - name: spring.servlet.multipart.max-file-size
               valueFrom:
                 configMapKeyRef:
-                  name: vulcano-config
+                  name: {{ include "vulcano.configmapName" $ }}
                   key: spring.servlet.multipart.max-file-size
             - name: spring.servlet.multipart.max-request-size
               valueFrom:
                 configMapKeyRef:
-                  name: vulcano-config
+                  name: {{ include "vulcano.configmapName" $ }}
                   key: spring.servlet.multipart.max-request-size
 
             # Integration Secrets
@@ -293,9 +293,8 @@ spec:
             {{- end }}
 
           envFrom:
-            # Load all configuration from ConfigMap as env vars
             - configMapRef:
-                name: vulcano-config
+                name: {{ include "vulcano.configmapName" . }}
 
           volumeMounts:
             - name: data
@@ -324,7 +323,7 @@ spec:
         {{- end }}
         - name: admin-users
           configMap:
-            name: admin-users
+            name: {{ include "vulcano.adminUsersConfigmapName" . }}
             items:
               - key: admin-users.txt
                 path: admin-users.txt

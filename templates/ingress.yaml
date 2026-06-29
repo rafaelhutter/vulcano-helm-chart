@@ -2,7 +2,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: vulcano
+  name: {{ include "vulcano.fullname" . }}
   namespace: {{ include "vulcano.namespace" . }}
   labels:
     {{- include "vulcano.labels" . | nindent 4 }}
@@ -45,7 +45,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: vulcano
+                name: {{ include "vulcano.fullname" $ }}
                 port:
                   number: {{ $.Values.vulcano.service.port }}
     {{- end }}

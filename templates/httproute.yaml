@@ -7,7 +7,7 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: vulcano
+  name: {{ include "vulcano.fullname" . }}
   namespace: {{ include "vulcano.namespace" . }}
   labels:
     {{- include "vulcano.labels" . | nindent 4 }}
@@ -49,6 +49,6 @@ spec:
       {{- end }}
       {{- end }}
       backendRefs:
-        - name: vulcano
+        - name: {{ include "vulcano.fullname" . }}
           port: {{ .Values.vulcano.service.port }}
 {{- end }}
