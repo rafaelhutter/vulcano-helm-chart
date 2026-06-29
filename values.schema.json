@@ -215,7 +215,11 @@
         },
         "searchProjectOnPageOpen": { "type": "string", "enum": ["true", "false"] },
         "showAllBins": { "type": "string", "enum": ["true", "false"] },
-        "useCustomFileName": { "type": "string", "enum": ["true", "false"] }
+        "useCustomFileName": { "type": "string", "enum": ["true", "false"] },
+        "extraEnvVars": {
+          "type": "array",
+          "items": { "type": "object" }
+        }
       }
     },
 

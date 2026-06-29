@@ -275,6 +275,17 @@ vulcano:
     # -- Key inside existingSecret that holds the license JWT (default: license-key).
     existingSecretKey: "license-key"
 
+  # -- Additional environment variables injected into the vulcano container.
+  # Useful for settings the chart does not expose directly.
+  extraEnvVars: []
+  # - name: CUSTOM_VAR
+  #   value: "custom-value"
+  # - name: SECRET_VAR
+  #   valueFrom:
+  #     secretKeyRef:
+  #       name: my-secret
+  #       key: secret-key
+
   graphicGenerator:
     rendition:
       # -- Comma-separated list of named output formats produced by the
