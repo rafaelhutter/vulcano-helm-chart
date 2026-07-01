@@ -103,9 +103,6 @@ data:
   {{- if .Values.features.cloudmode }}
   vulcano.cloudmode: {{ .Values.features.cloudmode | quote }}
   {{- end }}
-  {{- if .Values.features.webConfigDisable }}
-  vulcano.webconfig.disable: {{ .Values.features.webConfigDisable | quote }}
-  {{- end }}
 
   # Additional Vulcano Configuration
   vulcano.subtitle: {{ .Values.vulcano.subtitle | default "" | quote }}
