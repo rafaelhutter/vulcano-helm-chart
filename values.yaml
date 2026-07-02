@@ -3,8 +3,11 @@
 
 # -- Override the chart name
 nameOverride: ""
-# -- Override the full release name
-fullnameOverride: ""
+# -- Override the full release name. Defaults to "vulcano" (not the release
+# name) so upgrades keep matching resource names already live in every
+# existing deployment; the fullname helper would otherwise rename Deployment/
+# Service/ConfigMaps/Ingress to the release name and orphan the originals.
+fullnameOverride: "vulcano"
 
 # -- Labels to add to all deployed objects
 commonLabels: {}
