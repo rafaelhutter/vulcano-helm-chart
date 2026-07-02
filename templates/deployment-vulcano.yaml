@@ -323,7 +323,7 @@ spec:
         {{- end }}
         - name: admin-users
           configMap:
-            name: {{ include "vulcano.adminUsersConfigmapName" . }}
+            name: admin-users
             items:
               - key: admin-users.txt
                 path: admin-users.txt

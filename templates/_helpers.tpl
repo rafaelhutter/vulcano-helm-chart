@@ -60,13 +60,6 @@ ConfigMap name for the main vulcano-config map.
 {{- end }}
 
 {{/*
-ConfigMap name for the admin-users list.
-*/}}
-{{- define "vulcano.adminUsersConfigmapName" -}}
-{{- printf "%s-admin-users" (include "vulcano.fullname" .) -}}
-{{- end }}
-
-{{/*
 Selector labels
 */}}
 {{- define "vulcano.selectorLabels" -}}
