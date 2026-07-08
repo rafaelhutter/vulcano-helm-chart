@@ -760,6 +760,8 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | auth.serviceAdminPassword | string | `nil` | Service admin password for authentication. Stored in the vulcano-credentials Secret and shared by the vulcano, dflconnector and filetransfer deployments. |
 | auth.serviceAdminPasswordExistingSecret | string | `""` | Name of an existing K8s Secret holding the service admin password. When set, serviceAdminPassword is ignored, the chart does NOT write it to vulcano-credentials, and all three deployments read it from this Secret (keeps it out of values/Git). |
 | auth.serviceAdminPasswordExistingSecretKey | string | `"service-admin-password"` | Key inside serviceAdminPasswordExistingSecret that holds the password. |
+| commonAnnotations | object | `{}` | Annotations to add to all deployed objects |
+| commonLabels | object | `{}` | Labels to add to all deployed objects |
 | dataFeedMapping.ignoreDelete | string | `"false"` | Ignore Delete Messages from Datafeed |
 | dataFeedMapping.skipUpdates | string | `"false"` | Skip Asset Creation for Updates from Datafeed |
 | dflconnector | object | `{"enabled":false,"port":8080,"properties":{"logging.level.de.moovit.vulcanodflconnector":"INFO","logging.level.root":"INFO","logstash.enabled":"false","server.port":"8080","vulcano.base.url":"http://vulcano:8889/","vulcano.cache.db.expireAfterWriteMinutes":"15","vulcano.cache.db.maximumSize":"1000","vulcano.cache.http.expireAfterWriteMinutes":"1","vulcano.cache.http.maximumSize":"500","vulcano.dfl.competitionId":"","vulcano.dfl.listOfServicesUrl":"https://httpget.distribution.production.datahub-sts.de/DeliveryPlatform/REST/ListOfServices/{clientId}","vulcano.dfl.liveTableParameters":"","vulcano.dfl.pullOnceUrl":"https://httpget.distribution.production.datahub-sts.de/DeliveryPlatform/REST/PullOnce/{clientId}/{serviceId}/{parameterId}","vulcano.dfl.seasonId":"","vulcano.dfl.serviceInformationUrl":"https://httpget.distribution.production.datahub-sts.de/DeliveryPlatform/REST/ServiceInformation/{clientId}/{serviceId}","vulcano.dfl.services":"","vulcano.dfl.websocket.clientId":"","vulcano.dfl.websocket.clientName":"Vulcano","vulcano.dfl.websocket.connect-timeout":"30000","vulcano.dfl.websocket.max-message-size":"50MB","vulcano.dfl.websocket.message-timeout":"300000","vulcano.dfl.websocket.ping-interval-seconds":"10","vulcano.dfl.websocket.pong-timeout-millis":"20000","vulcano.dfl.websocket.url":"wss://ws.distribution.production.datahub-sts.de/DeliveryPlatform/websocket/ServiceRegistration","vulcano.logRequests":"false"},"resources":{"limits":{"cpu":"500m","memory":"512Mi"},"requests":{"cpu":"100m","memory":"256Mi"}}}` | ------------------------------------------------------------------------- |
@@ -798,7 +800,7 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | folders.thumbnails | string | `"/data/thumbs"` | Directory path where thumbnail images are stored |
 | folderscanner.mediaFolder.recreateFolderStructure | string | `"true"` | Recreate the folder structure for media folders |
 | folderscanner.mediaFolder.templates.client | string | `"/Volumes/helmut_1/vulcano/highres_templates"` | Client-side path mapping for template media files. Used to replace server template paths with client-accessible paths in HiresApiDelegateImpl.mapHiresPath() for template folder access |
-| fullnameOverride | string | `""` | Override the full release name |
+| fullnameOverride | string | `"vulcano"` | Override the full release name. Defaults to "vulcano" (not the release name) so upgrades keep matching resource names already live in every existing deployment; the fullname helper would otherwise rename Deployment/ Service/ConfigMaps/Ingress to the release name and orphan the originals. |
 | global | object | `{"namespace":"vulcano-app"}` | Global configuration for the Vulcano deployment |
 | global.namespace | string | `"vulcano-app"` | Kubernetes namespace for the deployment |
 | helmut | object | `{"apiToken":"","baseUrl":null,"clientId":"","clientSecret":"","cosmo":{"baseBreadcrumb":"","mappingDest":"","mappingSrc":"","sync":""},"logRequest":"","pageSize":""}` | ------------------------------------------------------------------------- |
@@ -920,7 +922,7 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | mongoBackup.s3.secretAccessKey | string | `""` | AWS secret access key (used only when existingSecret is empty; put in values.secret.yaml) |
 | mongoBackup.timezone | string | `"Europe/Berlin"` | Timezone for the container (IANA name); affects backup timestamp naming. Empty = UTC. |
 | mongoBackup.tolerations | list | `[]` | Tolerations for the backup pod (falls back to chart-level tolerations) |
-| mongodb | object | `{"auth":{"existingSecret":"","existingSecretPasswordKey":"mongodb-root-password","rootPassword":"bitte","rootUsername":"root"},"database":"vulcano","enabled":true,"externalHost":"","fullnameOverride":"mongodb","metrics":{"enabled":false},"persistence":{"enabled":true,"size":"50Gi","storageClassName":""},"port":27017,"replicaCount":3,"resources":{"limits":{"cpu":"2000m","memory":"4Gi"},"requests":{"cpu":"1000m","memory":"2Gi"}}}` | MongoDB Configuration |
+| mongodb | object | `{"auth":{"existingSecret":"","existingSecretPasswordKey":"mongodb-root-password","rootPassword":"bitte","rootUsername":"root"},"database":"vulcano","enabled":true,"externalHost":"","fullnameOverride":"mongodb","metrics":{"enabled":false},"persistence":{"enabled":true,"size":"50Gi","storageClassName":""},"port":27017,"replicaCount":3,"replicaSet":{"enabled":true,"name":"rs0"},"resources":{"limits":{"cpu":"2000m","memory":"4Gi"},"requests":{"cpu":"1000m","memory":"2Gi"}}}` | MongoDB Configuration |
 | mongodb.auth.existingSecret | string | `""` | Name of an existing Kubernetes Secret containing MongoDB credentials. When set, rootPassword is ignored and the chart will NOT create a mongodb-credentials secret. |
 | mongodb.auth.existingSecretPasswordKey | string | `"mongodb-root-password"` | Key inside existingSecret that holds the root password (chart default: "mongodb-root-password") |
 | mongodb.auth.rootPassword | string | `"bitte"` | MongoDB root password (ignored when existingSecret is set) |
@@ -934,6 +936,8 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | mongodb.persistence.storageClassName | string | `""` | Storage class name for MongoDB |
 | mongodb.port | int | `27017` | MongoDB port Vulcano connects to (defaults to 27017). Override for non-standard external ports. |
 | mongodb.replicaCount | int | `3` | Number of MongoDB replicas |
+| mongodb.replicaSet.enabled | bool | `true` | Enable MongoDB replica set mode. Required when replicaCount > 1. Switches the connection to the headless service and emits replica-set-name. |
+| mongodb.replicaSet.name | string | `"rs0"` | MongoDB replica set name. Must match the name the sub-chart was initialized with. |
 | nameOverride | string | `""` | Override the chart name |
 | ndr.bidLookupUrl | string | `""` |  |
 | ndr.wikiUrl | string | `""` |  |
@@ -1009,6 +1013,7 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | vulcano.completedWebhook | string | `""` | HTTP webhook URL for NOTIFICATION purposes only - receives completed asset data but cannot modify it |
 | vulcano.createAssetInterceptor | string | `""` | HTTP endpoint URL that will be called when a new asset is created |
 | vulcano.enabled | bool | `true` |  |
+| vulcano.extraEnvVars | list | `[]` | Additional environment variables injected into the vulcano container. Useful for settings the chart does not expose directly. |
 | vulcano.folder.createUserFolder | string | `"false"` | Enable creation of user-specific folders for organizing generated assets |
 | vulcano.folder.globalParent | string | `""` | Global parent folder path component inserted in generated asset folder structure when user folders are enabled |
 | vulcano.frontend.enableTimecodeForAssets | string | `"false"` | If enabled, a Timecode input will appear in the PreferenceView for assets |
