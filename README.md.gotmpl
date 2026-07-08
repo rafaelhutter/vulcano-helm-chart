@@ -564,6 +564,40 @@ Repeat Step 2 for every additional Vulcano instance, changing `global.namespace`
 > Using a dedicated `extraObjects` service (instead of patching the sub-chart service) ensures the
 > NodePort is **declarative** and survives every `helm upgrade` without manual intervention.
 
+> **ℹ️ RabbitMQ – LoadBalancer alternative**
+>
+> If the cluster has a LoadBalancer controller (MetalLB on bare metal, or a cloud LB), you can give the
+> broker its own IP instead of per-node ports — then every tenant reuses the native `5672` and there is
+> no NodePort collision to manage. AMQP is raw TCP, so it belongs on the LoadBalancer; the management UI
+> is HTTP and should go through an Ingress (or stay `ClusterIP`) — do **not** publish the admin UI on the
+> LoadBalancer IP.
+>
+> ```yaml
+> extraObjects:
+>   - apiVersion: v1
+>     kind: Service
+>     metadata:
+>       name: rabbitmq-external
+>       namespace: "vulcano-common"
+>       annotations:
+>         metallb.universe.tf/loadBalancerIPs: "10.10.10.60"   # replaces the deprecated spec.loadBalancerIP
+>     spec:
+>       type: LoadBalancer
+>       loadBalancerSourceRanges:        # whitelist render-node IPs; omit if the LB is already private
+>         - 10.0.0.0/24
+>       selector:
+>         app.kubernetes.io/name: rabbitmq
+>         app.kubernetes.io/instance: vulcano-shared   # must equal the Helm release name
+>       ports:
+>         - name: amqp
+>           port: 5672
+>           targetPort: amqp
+> ```
+>
+> Render nodes then use `amqp://<user>:<password>@10.10.10.60:5672`. Requires a LoadBalancer controller
+> with an address pool, or the Service stays `<pending>` — NodePort (above) needs no such infrastructure,
+> which is why the shipped `deployments/` use it.
+
 > **ℹ️ Let's Encrypt HTTP-01 challenge**
 >
 > For automatic TLS via cert-manager, ports **80 and 443** must be reachable from the internet at the
