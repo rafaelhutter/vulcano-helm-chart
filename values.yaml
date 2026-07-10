@@ -1019,9 +1019,9 @@ auth:
   # -- Authentication mode (MICROSOFT, KEYCLOAK, HELMUT, BID)
   mode: "MICROSOFT"
   microsoft:
-    # -- Microsoft Azure AD authority URL
+    # -- Microsoft Azure AD authority URL (used by MICROSOFT and BID modes)
     authority:
-    # -- Microsoft Azure AD client ID
+    # -- Microsoft Azure AD client ID (used by MICROSOFT and BID modes)
     clientId:
   # -- Service admin password for authentication. Stored in the vulcano-credentials
   # Secret and shared by the vulcano, dflconnector and filetransfer deployments.

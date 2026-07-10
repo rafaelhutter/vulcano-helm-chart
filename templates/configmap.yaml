@@ -195,7 +195,7 @@ data:
 
   # Authentication Configuration
   login.mode: {{ .Values.auth.mode | quote }}
-  {{- if eq .Values.auth.mode "MICROSOFT" }}
+  {{- if has .Values.auth.mode (list "MICROSOFT" "BID") }}
   microsoft.auth.authority: {{ .Values.auth.microsoft.authority | quote }}
   microsoft.auth.clientId: {{ .Values.auth.microsoft.clientId | quote }}
   {{- end }}

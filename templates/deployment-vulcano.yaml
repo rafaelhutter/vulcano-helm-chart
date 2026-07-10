@@ -201,7 +201,7 @@ spec:
                 configMapKeyRef:
                   name: {{ include "vulcano.configmapName" $ }}
                   key: login.mode
-            {{- if eq .Values.auth.mode "MICROSOFT" }}
+            {{- if has .Values.auth.mode (list "MICROSOFT" "BID") }}
             - name: microsoft.auth.authority
               valueFrom:
                 configMapKeyRef:

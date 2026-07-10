@@ -787,8 +787,8 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | auth.keycloak.clientSecret | string | `nil` | Keycloak client secret |
 | auth.keycloak.existingPasswordKey | string | `"keycloak-client-secret"` | Key inside existingSecret that holds the client secret |
 | auth.keycloak.existingSecret | string | `""` | Name of an existing K8s Secret containing the Keycloak client secret (when set, clientSecret is ignored) |
-| auth.microsoft.authority | string | `nil` | Microsoft Azure AD authority URL |
-| auth.microsoft.clientId | string | `nil` | Microsoft Azure AD client ID |
+| auth.microsoft.authority | string | `nil` | Microsoft Azure AD authority URL (used by MICROSOFT and BID modes) |
+| auth.microsoft.clientId | string | `nil` | Microsoft Azure AD client ID (used by MICROSOFT and BID modes) |
 | auth.mode | string | `"MICROSOFT"` | Authentication mode (MICROSOFT, KEYCLOAK, HELMUT, BID) |
 | auth.secret | string | `nil` | Authentication secret key |
 | auth.serviceAdminPassword | string | `nil` | Service admin password for authentication. Stored in the vulcano-credentials Secret and shared by the vulcano, dflconnector and filetransfer deployments. |
