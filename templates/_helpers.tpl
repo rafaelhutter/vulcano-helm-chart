@@ -242,13 +242,16 @@ new pod hangs in ContainerCreating until something manually intervenes.
 Recreate sidesteps the entire class of problem by terminating the old
 pod first.
 
+An existingClaim (primary or extraMount) is trusted to be RWX since the
+chart can't inspect it; force `vulcano.strategy: Recreate` if it's RWO.
+
 The user can force a value with `.Values.vulcano.strategy`.
 */}}
 {{- define "vulcano.deploymentStrategy" -}}
 {{- if .Values.vulcano.strategy -}}
 {{ .Values.vulcano.strategy }}
 {{- else -}}
-{{- $allRWX := eq (.Values.vulcano.storage.accessModes | default "ReadWriteOnce") "ReadWriteMany" -}}
+{{- $allRWX := or (not (empty .Values.vulcano.storage.existingClaim)) (eq (.Values.vulcano.storage.accessModes | default "ReadWriteOnce") "ReadWriteMany") -}}
 {{- range .Values.vulcano.storage.extraMounts -}}
   {{- if and (not .existingClaim) (ne (.accessModes | default "ReadWriteOnce") "ReadWriteMany") -}}
     {{- $allRWX = false -}}
