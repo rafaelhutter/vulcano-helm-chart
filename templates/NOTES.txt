@@ -38,3 +38,18 @@ Reach the backend:
 
     Details: https://kubernetes.io/blog/2025/11/11/ingress-nginx-retirement/
 {{- end }}
+
+{{- if .Values.rabbitmq.enabled }}
+
+RabbitMQ broker ({{ .Values.rabbitmq.replicaCount }} replica{{ if gt (int .Values.rabbitmq.replicaCount) 1 }}s, clustered{{ end }}):
+  The backend connects automatically via the in-cluster Service:
+    {{ include "vulcano.rabbitmq.host" . }}:{{ .Values.rabbitmq.port | default 5672 }}
+{{- if gt (int .Values.rabbitmq.replicaCount) 1 }}
+
+  Clustered mode — peer discovery is enabled, so the {{ .Values.rabbitmq.replicaCount }} nodes
+  form ONE logical broker (no split-brain). Two things to configure:
+    • External render nodes (LAN) must list ALL broker addresses — every cluster
+      node IP on the AMQP NodePort — so they fail over across nodes.
+    • Set rabbitmq.persistence.enabled=true so cluster metadata survives reschedules.
+{{- end }}
+{{- end }}

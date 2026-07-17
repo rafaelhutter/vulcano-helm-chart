@@ -543,10 +543,15 @@ rabbitmq:
   port: 5672
   # -- Full name override for RabbitMQ resources
   fullnameOverride: "rabbitmq"
-  # -- Number of RabbitMQ replicas. Keep at 1 — HA (>1) is unsupported by this stack.
-  # >1 without clustering = independent split-brain brokers; and Vulcano's job queue is a
-  # classic priority queue (x-max-priority), which quorum can't back and RabbitMQ 4.x removed mirroring.
+  # -- Number of RabbitMQ replicas. 1 = single node (default); scale up for HA —
+  # clustering is pre-enabled (peerDiscoveryK8sPlugin) so >1 forms a real cluster, not
+  # split-brain. The classic priority job queue isn't message-replicated, but the server
+  # rebuilds it from the DB, so in-flight jobs re-queue after a node failure.
   replicaCount: 1
+  # -- K8s peer-discovery clustering. Pre-enabled so scaling replicaCount >1 forms one
+  # real RabbitMQ cluster instead of independent split-brain brokers. Harmless at 1 replica.
+  peerDiscoveryK8sPlugin:
+    enabled: true
 
   auth:
     # -- Erlang cookie for RabbitMQ clustering (ignored when existingSecret is set)
@@ -572,7 +577,8 @@ rabbitmq:
     type: NodePort
 
   persistence:
-    # -- Enable RabbitMQ persistence
+    # -- Enable RabbitMQ persistence. Off is fine for a single node (jobs rebuild from
+    # the DB). Enable when scaling >1 so cluster metadata survives pod reschedules.
     enabled: false
     # -- RabbitMQ persistent volume size
     # size: "10Gi"

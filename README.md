@@ -144,41 +144,42 @@ rabbitmq:
     existingErlangCookieKey: "bw-rabbitmq-erlang-cookie"
 ```
 
-### RabbitMQ runs single-node by design (`replicaCount: 1`)
+### RabbitMQ: single-node by default, scale for HA
 
-`rabbitmq.replicaCount` defaults to **1 and must stay 1**. Running more than one
-replica does **not** give you high availability — it gives you a *split brain*.
+`rabbitmq.replicaCount` defaults to **1** (a single broker). To run highly
+available, simply **scale it up** — clustering is already wired for you.
 
-The `cloudpirates/rabbitmq` sub-chart only forms a real cluster when its
-`peerDiscoveryK8sPlugin.enabled` flag is `true`, which this chart leaves off. With
-it off, each replica boots as an **independent standalone broker** behind one
-Service. The Service round-robins AMQP connections across them, so a queue
-declared on `rabbitmq-0` doesn't exist on `rabbitmq-1` — a producer on one node
-publishes where a consumer on another will never see it, and jobs silently go
-missing. (This was a real production incident, resolved by scaling back to 1.)
+**Clustering is pre-enabled.** The chart sets the `cloudpirates/rabbitmq`
+sub-chart's `peerDiscoveryK8sPlugin.enabled: true`, so the replicas form **one
+logical cluster** via Kubernetes peer discovery. At `replicaCount: 1` that's just
+a single-node "cluster" (harmless); at `>1` the nodes discover each other and act
+as one broker behind the Service. This is what makes scaling safe — the old
+failure mode (multiple **independent** brokers behind one Service, where a job
+published to `rabbitmq-0` is invisible to a consumer on `rabbitmq-1`, i.e.
+split-brain — a real past incident) **cannot happen** with peer discovery on.
 
-Turning clustering **on** wouldn't fix it either, because Vulcano's messaging is
-architecturally single-node:
+**What clustering does *not* do here: replicate the job queue.** `vulcano.jobs`
+is a **classic priority queue** (`x-max-priority`), and priority queues cannot be
+made replicated — quorum queues don't support priorities, and RabbitMQ 4.x
+removed classic mirrored queues. So the queue lives on one "home" node and its
+messages are not copied elsewhere. **That is fine for Vulcano**: the backend
+treats the DB as the source of truth and re-declares + re-queues `vulcano.jobs`
+from the database on reconnect. If the home node dies, in-flight queue entries
+are lost but automatically rebuilt from the DB — a brief dispatch gap, not data
+loss. Message durability is therefore a non-goal, which is why quorum queues
+(and switching brokers) would buy nothing here.
 
-- The central **`vulcano.jobs`** queue is a **classic priority queue**
-  (`x-max-priority`). **Quorum queues do not support priorities**, so this queue
-  can never be a quorum (replicated) queue.
-- The render-node return queues are declared **non-durable / exclusive /
-  auto-delete** — also ineligible for quorum.
-- **RabbitMQ 4.x removed classic mirrored queues** (`ha-mode` policies), so the
-  old "mirror a classic queue across nodes" approach no longer exists.
+**When scaling `replicaCount > 1`:**
 
-**Resilience you *do* get at `replicaCount: 1`:** if the node running the broker
-pod dies, Kubernetes reschedules the single pod elsewhere. Enable
-`rabbitmq.persistence` so queued messages survive that reschedule. External
-render nodes can list several NodePort addresses (see the render-node note below)
-for connection-level failover across ingress nodes — they all still route to the
-one broker pod.
+- Set `rabbitmq.persistence.enabled: true` so **cluster metadata** survives pod
+  reschedules (this is about cluster health, not message durability).
+- Point external render nodes at **all** broker addresses (every cluster node IP
+  on the AMQP NodePort) so they fail over across nodes — see the render-node note
+  further down. In-cluster clients (the backend) need no change; they use the
+  `rabbitmq` Service DNS, which is correct at any replica count.
 
-Genuine broker HA would require **application-level changes** (reworking the job
-queue away from classic priority semantics, or moving to a different broker) —
-it cannot be switched on from this chart. See the maintainers before attempting
-`replicaCount > 1`.
+Choosing `1` (simplest, self-healing via DB) vs `>1` (shorter dispatch gap on a
+node failure) is left to whoever operates the cluster.
 
 ### MongoDB Data Preservation Across Upgrades
 
@@ -1023,7 +1024,7 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | octopus.username | string | `""` |  |
 | project.delete.ownerOnly | string | `"true"` | Only allow project deletion by the owner |
 | project.sendToUrls | string | `""` | URLs to send project data to external systems |
-| rabbitmq | object | `{"auth":{"erlangCookie":"VULCANO_SECRET_COOKIE","existingErlangCookieKey":"erlang-cookie","existingPasswordKey":"password","existingSecret":"","password":"vulcano0479","username":"vulcano"},"enabled":true,"externalHost":"","fullnameOverride":"rabbitmq","jobUpdateQueue":"vulcano-job-updates","metrics":{"enabled":false},"persistence":{"enabled":false},"port":5672,"replicaCount":1,"resources":{"limits":{"cpu":"1000m","memory":"2Gi"},"requests":{"cpu":"500m","memory":"1Gi"}},"service":{"type":"NodePort"}}` | RabbitMQ Configuration |
+| rabbitmq | object | `{"auth":{"erlangCookie":"VULCANO_SECRET_COOKIE","existingErlangCookieKey":"erlang-cookie","existingPasswordKey":"password","existingSecret":"","password":"vulcano0479","username":"vulcano"},"enabled":true,"externalHost":"","fullnameOverride":"rabbitmq","jobUpdateQueue":"vulcano-job-updates","metrics":{"enabled":false},"peerDiscoveryK8sPlugin":{"enabled":true},"persistence":{"enabled":false},"port":5672,"replicaCount":1,"resources":{"limits":{"cpu":"1000m","memory":"2Gi"},"requests":{"cpu":"500m","memory":"1Gi"}},"service":{"type":"NodePort"}}` | RabbitMQ Configuration |
 | rabbitmq.auth.erlangCookie | string | `"VULCANO_SECRET_COOKIE"` | Erlang cookie for RabbitMQ clustering (ignored when existingSecret is set) |
 | rabbitmq.auth.existingErlangCookieKey | string | `"erlang-cookie"` | Key inside existingSecret that holds the Erlang cookie |
 | rabbitmq.auth.existingPasswordKey | string | `"password"` | Key inside existingSecret that holds the RabbitMQ password. Default "password" matches the keys written by the cloudpirates/rabbitmq sub-chart's own Secret. Override only when pointing at an externally managed Secret that uses a different key name (e.g. "rabbitmq-password" from a Bitwarden mapping or legacy Bitnami secret). |
@@ -1035,9 +1036,10 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | rabbitmq.fullnameOverride | string | `"rabbitmq"` | Full name override for RabbitMQ resources |
 | rabbitmq.jobUpdateQueue | string | `"vulcano-job-updates"` | Name of the RabbitMQ queue used as the return channel from render nodes back to the server. Only set this if you need to run multiple isolated Vulcano instances sharing the same RabbitMQ broker. Defaults to "vulcano-job-updates" when not set. |
 | rabbitmq.metrics.enabled | bool | `false` | Enable RabbitMQ metrics |
-| rabbitmq.persistence.enabled | bool | `false` | Enable RabbitMQ persistence |
+| rabbitmq.peerDiscoveryK8sPlugin | object | `{"enabled":true}` | K8s peer-discovery clustering. Pre-enabled so scaling replicaCount >1 forms one real RabbitMQ cluster instead of independent split-brain brokers. Harmless at 1 replica. |
+| rabbitmq.persistence.enabled | bool | `false` | Enable RabbitMQ persistence. Off is fine for a single node (jobs rebuild from the DB). Enable when scaling >1 so cluster metadata survives pod reschedules. |
 | rabbitmq.port | int | `5672` | RabbitMQ AMQP port Vulcano connects to (defaults to 5672). Override for non-standard external ports. |
-| rabbitmq.replicaCount | int | `1` | Number of RabbitMQ replicas. Keep at 1 — HA (>1) is unsupported by this stack. >1 without clustering = independent split-brain brokers; and Vulcano's job queue is a classic priority queue (x-max-priority), which quorum can't back and RabbitMQ 4.x removed mirroring. |
+| rabbitmq.replicaCount | int | `1` | Number of RabbitMQ replicas. 1 = single node (default); scale up for HA — clustering is pre-enabled (peerDiscoveryK8sPlugin) so >1 forms a real cluster, not split-brain. The classic priority job queue isn't message-replicated, but the server rebuilds it from the DB, so in-flight jobs re-queue after a node failure. |
 | rabbitmq.service.type | string | `"NodePort"` | RabbitMQ service type (ClusterIP, NodePort, LoadBalancer) |
 | rbac.create | bool | `true` |  |
 | securityContext.fsGroup | int | `1001` |  |
