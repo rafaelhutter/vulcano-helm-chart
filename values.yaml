@@ -514,7 +514,13 @@ mongoBackup:
     # -- AWS secret access key (used only when existingSecret is empty; put in values.secret.yaml)
     secretAccessKey: ""
   # -- Resource requests/limits for the backup container
-  resources: {}
+  resources:
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
   # -- Node selector for the backup pod (falls back to chart-level nodeSelector)
   nodeSelector: {}
   # -- Tolerations for the backup pod (falls back to chart-level tolerations)
