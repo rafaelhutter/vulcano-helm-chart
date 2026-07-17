@@ -543,8 +543,10 @@ rabbitmq:
   port: 5672
   # -- Full name override for RabbitMQ resources
   fullnameOverride: "rabbitmq"
-  # -- Number of RabbitMQ replicas
-  replicaCount: 3
+  # -- Number of RabbitMQ replicas. Keep at 1 — HA (>1) is unsupported by this stack.
+  # >1 without clustering = independent split-brain brokers; and Vulcano's job queue is a
+  # classic priority queue (x-max-priority), which quorum can't back and RabbitMQ 4.x removed mirroring.
+  replicaCount: 1
 
   auth:
     # -- Erlang cookie for RabbitMQ clustering (ignored when existingSecret is set)

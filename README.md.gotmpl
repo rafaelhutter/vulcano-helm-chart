@@ -133,6 +133,42 @@ rabbitmq:
     existingErlangCookieKey: "bw-rabbitmq-erlang-cookie"
 ```
 
+### RabbitMQ runs single-node by design (`replicaCount: 1`)
+
+`rabbitmq.replicaCount` defaults to **1 and must stay 1**. Running more than one
+replica does **not** give you high availability — it gives you a *split brain*.
+
+The `cloudpirates/rabbitmq` sub-chart only forms a real cluster when its
+`peerDiscoveryK8sPlugin.enabled` flag is `true`, which this chart leaves off. With
+it off, each replica boots as an **independent standalone broker** behind one
+Service. The Service round-robins AMQP connections across them, so a queue
+declared on `rabbitmq-0` doesn't exist on `rabbitmq-1` — a producer on one node
+publishes where a consumer on another will never see it, and jobs silently go
+missing. (This was a real production incident, resolved by scaling back to 1.)
+
+Turning clustering **on** wouldn't fix it either, because Vulcano's messaging is
+architecturally single-node:
+
+- The central **`vulcano.jobs`** queue is a **classic priority queue**
+  (`x-max-priority`). **Quorum queues do not support priorities**, so this queue
+  can never be a quorum (replicated) queue.
+- The render-node return queues are declared **non-durable / exclusive /
+  auto-delete** — also ineligible for quorum.
+- **RabbitMQ 4.x removed classic mirrored queues** (`ha-mode` policies), so the
+  old "mirror a classic queue across nodes" approach no longer exists.
+
+**Resilience you *do* get at `replicaCount: 1`:** if the node running the broker
+pod dies, Kubernetes reschedules the single pod elsewhere. Enable
+`rabbitmq.persistence` so queued messages survive that reschedule. External
+render nodes can list several NodePort addresses (see the render-node note below)
+for connection-level failover across ingress nodes — they all still route to the
+one broker pod.
+
+Genuine broker HA would require **application-level changes** (reworking the job
+queue away from classic priority semantics, or moving to a different broker) —
+it cannot be switched on from this chart. See the maintainers before attempting
+`replicaCount > 1`.
+
 ### MongoDB Data Preservation Across Upgrades
 
 The `cloudpirates/mongodb` sub-chart provisions its persistent volume via a

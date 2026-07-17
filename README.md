@@ -144,6 +144,42 @@ rabbitmq:
     existingErlangCookieKey: "bw-rabbitmq-erlang-cookie"
 ```
 
+### RabbitMQ runs single-node by design (`replicaCount: 1`)
+
+`rabbitmq.replicaCount` defaults to **1 and must stay 1**. Running more than one
+replica does **not** give you high availability — it gives you a *split brain*.
+
+The `cloudpirates/rabbitmq` sub-chart only forms a real cluster when its
+`peerDiscoveryK8sPlugin.enabled` flag is `true`, which this chart leaves off. With
+it off, each replica boots as an **independent standalone broker** behind one
+Service. The Service round-robins AMQP connections across them, so a queue
+declared on `rabbitmq-0` doesn't exist on `rabbitmq-1` — a producer on one node
+publishes where a consumer on another will never see it, and jobs silently go
+missing. (This was a real production incident, resolved by scaling back to 1.)
+
+Turning clustering **on** wouldn't fix it either, because Vulcano's messaging is
+architecturally single-node:
+
+- The central **`vulcano.jobs`** queue is a **classic priority queue**
+  (`x-max-priority`). **Quorum queues do not support priorities**, so this queue
+  can never be a quorum (replicated) queue.
+- The render-node return queues are declared **non-durable / exclusive /
+  auto-delete** — also ineligible for quorum.
+- **RabbitMQ 4.x removed classic mirrored queues** (`ha-mode` policies), so the
+  old "mirror a classic queue across nodes" approach no longer exists.
+
+**Resilience you *do* get at `replicaCount: 1`:** if the node running the broker
+pod dies, Kubernetes reschedules the single pod elsewhere. Enable
+`rabbitmq.persistence` so queued messages survive that reschedule. External
+render nodes can list several NodePort addresses (see the render-node note below)
+for connection-level failover across ingress nodes — they all still route to the
+one broker pod.
+
+Genuine broker HA would require **application-level changes** (reworking the job
+queue away from classic priority semantics, or moving to a different broker) —
+it cannot be switched on from this chart. See the maintainers before attempting
+`replicaCount > 1`.
+
 ### MongoDB Data Preservation Across Upgrades
 
 The `cloudpirates/mongodb` sub-chart provisions its persistent volume via a
@@ -987,7 +1023,7 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | octopus.username | string | `""` |  |
 | project.delete.ownerOnly | string | `"true"` | Only allow project deletion by the owner |
 | project.sendToUrls | string | `""` | URLs to send project data to external systems |
-| rabbitmq | object | `{"auth":{"erlangCookie":"VULCANO_SECRET_COOKIE","existingErlangCookieKey":"erlang-cookie","existingPasswordKey":"password","existingSecret":"","password":"vulcano0479","username":"vulcano"},"enabled":true,"externalHost":"","fullnameOverride":"rabbitmq","jobUpdateQueue":"vulcano-job-updates","metrics":{"enabled":false},"persistence":{"enabled":false},"port":5672,"replicaCount":3,"resources":{"limits":{"cpu":"1000m","memory":"2Gi"},"requests":{"cpu":"500m","memory":"1Gi"}},"service":{"type":"NodePort"}}` | RabbitMQ Configuration |
+| rabbitmq | object | `{"auth":{"erlangCookie":"VULCANO_SECRET_COOKIE","existingErlangCookieKey":"erlang-cookie","existingPasswordKey":"password","existingSecret":"","password":"vulcano0479","username":"vulcano"},"enabled":true,"externalHost":"","fullnameOverride":"rabbitmq","jobUpdateQueue":"vulcano-job-updates","metrics":{"enabled":false},"persistence":{"enabled":false},"port":5672,"replicaCount":1,"resources":{"limits":{"cpu":"1000m","memory":"2Gi"},"requests":{"cpu":"500m","memory":"1Gi"}},"service":{"type":"NodePort"}}` | RabbitMQ Configuration |
 | rabbitmq.auth.erlangCookie | string | `"VULCANO_SECRET_COOKIE"` | Erlang cookie for RabbitMQ clustering (ignored when existingSecret is set) |
 | rabbitmq.auth.existingErlangCookieKey | string | `"erlang-cookie"` | Key inside existingSecret that holds the Erlang cookie |
 | rabbitmq.auth.existingPasswordKey | string | `"password"` | Key inside existingSecret that holds the RabbitMQ password. Default "password" matches the keys written by the cloudpirates/rabbitmq sub-chart's own Secret. Override only when pointing at an externally managed Secret that uses a different key name (e.g. "rabbitmq-password" from a Bitwarden mapping or legacy Bitnami secret). |
@@ -1001,7 +1037,7 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | rabbitmq.metrics.enabled | bool | `false` | Enable RabbitMQ metrics |
 | rabbitmq.persistence.enabled | bool | `false` | Enable RabbitMQ persistence |
 | rabbitmq.port | int | `5672` | RabbitMQ AMQP port Vulcano connects to (defaults to 5672). Override for non-standard external ports. |
-| rabbitmq.replicaCount | int | `3` | Number of RabbitMQ replicas |
+| rabbitmq.replicaCount | int | `1` | Number of RabbitMQ replicas. Keep at 1 — HA (>1) is unsupported by this stack. >1 without clustering = independent split-brain brokers; and Vulcano's job queue is a classic priority queue (x-max-priority), which quorum can't back and RabbitMQ 4.x removed mirroring. |
 | rabbitmq.service.type | string | `"NodePort"` | RabbitMQ service type (ClusterIP, NodePort, LoadBalancer) |
 | rbac.create | bool | `true` |  |
 | securityContext.fsGroup | int | `1001` |  |
