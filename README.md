@@ -906,8 +906,8 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | integrations.vidispine.workflowVersion | string | `""` | Version number of the default Vidispine workflow to use |
 | integrations.vidispine.workflowVersionMogrt | string | `""` | Version number of the MOGRT-specific workflow in Vidispine |
 | logging.fileMaxSize | string | `"10MB"` | Maximum size of the log file before it gets rotated |
-| logging.fileName | string | `"/data/LOGS/vulcano_k8s.log"` | Path to the log file where application logs are written |
-| logging.filePath | string | `"/data/logs"` | Directory written into Spring Boot's `logging.file.path` setting (controls log directory). Leave empty to fall back to the JVM-arg derived path (`vulcano.storage.mountPath + /logs`). |
+| logging.fileName | string | `"/data/LOGS/vulcano_k8s.log"` | Full path to the log file (Spring `logging.file.name`); takes precedence over `filePath`. Sourced solely from the ConfigMap. |
+| logging.filePath | string | `"/data/logs"` | Log directory (Spring `logging.file.path`). Sourced solely from the ConfigMap. Only used when `fileName` is empty; a full-path `fileName` wins. |
 | logging.level.org | string | `"INFO"` | Logging level for the org package |
 | logging.level.securityFilter | string | `"WARN"` | Logging level for the security filter |
 | management.endpoint.caches.enabled | string | `"true"` | Enable the caches actuator endpoint |
