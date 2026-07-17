@@ -48,7 +48,7 @@ spec:
           
           ports:
             - name: http
-              containerPort: 8889
+              containerPort: {{ .Values.vulcano.service.targetPort }}
               protocol: TCP
 
           {{- if .Values.vulcano.livenessProbe.enabled }}
