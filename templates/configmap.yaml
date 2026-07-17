@@ -209,11 +209,11 @@ data:
   project.delete.ownerOnly: {{ .Values.project.delete.ownerOnly | default "true" | quote }}
 
   # Auth Configuration
-  # auth.service_admin_password lives in the vulcano-credentials Secret
-  # (consumed as an explicit env var on the vulcano deployment), not here.
+  # auth.service_admin_password and auth.secret live in the vulcano-credentials
+  # Secret (consumed as explicit env vars on the vulcano deployment), not here —
+  # auth.secret signs auth tokens and must not sit in a world-readable ConfigMap.
   auth.keycloak.authority: {{ .Values.auth.keycloak.authority | default "http://localhost:8080/auth/realms/moovit" | quote }}
   auth.keycloak.clientId: {{ .Values.auth.keycloak.clientId | default "vulcano" | quote }}
-  auth.secret: {{ .Values.auth.secret | default "XKv%Y$gVugN6!6" | quote }}
   
   # RabbitMQ Queue Configuration
   vulcano.jobUpdateQueue: {{ .Values.rabbitmq.jobUpdateQueue | default "vulcano-job-updates" | quote }}

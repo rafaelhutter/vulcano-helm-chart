@@ -196,6 +196,33 @@ license-key
 {{- end }}
 
 {{/*
+Auth token-signing secret.
+Stored in a Secret (never the ConfigMap) so the key that signs auth tokens
+isn't world-readable. Same default as before to preserve behaviour; point at
+an externally managed Secret via auth.secretExistingSecret to keep it out of
+values.yaml/Git.
+*/}}
+{{- define "vulcano.authSecret" -}}
+{{- .Values.auth.secret | default "XKv%Y$gVugN6!6" -}}
+{{- end }}
+
+{{- define "vulcano.authSecret.secretName" -}}
+{{- if .Values.auth.secretExistingSecret -}}
+{{- .Values.auth.secretExistingSecret -}}
+{{- else -}}
+vulcano-credentials
+{{- end -}}
+{{- end }}
+
+{{- define "vulcano.authSecret.secretKey" -}}
+{{- if .Values.auth.secretExistingSecret -}}
+{{- .Values.auth.secretExistingSecretKey | default "auth-secret" -}}
+{{- else -}}
+auth-secret
+{{- end -}}
+{{- end }}
+
+{{/*
 MongoDB Spring Boot env vars.
 Emits each property under both the legacy `spring.data.mongodb.*` keys and the
 new `spring.mongodb.*` keys required since the Spring Boot upgrade, so the
