@@ -91,6 +91,14 @@ spec:
                   name: {{ include "vulcano.serviceAdminPassword.secretName" . }}
                   key: {{ include "vulcano.serviceAdminPassword.secretKey" . }}
 
+            # Auth token-signing secret — sourced from a Secret, never the
+            # ConfigMap, so it never sits in plaintext.
+            - name: auth.secret
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "vulcano.authSecret.secretName" . }}
+                  key: {{ include "vulcano.authSecret.secretKey" . }}
+
             # MongoDB Configuration
             {{- include "vulcano.mongodb.env" . | nindent 12 }}
 

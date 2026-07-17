@@ -1044,8 +1044,15 @@ auth:
     existingSecret: ""
     # -- Key inside existingSecret that holds the client secret
     existingPasswordKey: "keycloak-client-secret"
-  # -- Authentication secret key
+  # -- Authentication token-signing secret. Stored in the vulcano-credentials
+  # Secret (never the ConfigMap). Leave empty to keep the chart default.
   secret:
+  # -- Name of an existing K8s Secret holding the auth token-signing secret.
+  # When set, `secret` is ignored, the chart does NOT write it to
+  # vulcano-credentials, and the deployment reads it from this Secret.
+  secretExistingSecret: ""
+  # -- Key inside secretExistingSecret that holds the auth secret.
+  secretExistingSecretKey: "auth-secret"
 
 # Admin Users
 # -- List of email addresses for users with administrative privileges. One email per line. These users will have full system access including project deletion and user management.
