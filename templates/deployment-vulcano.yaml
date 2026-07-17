@@ -132,99 +132,10 @@ spec:
                   key: {{ include "vulcano.license.secretKey" . }}
             {{- end }}
 
-            # Folder Configuration
-            - name: vulcano.pathmap.rendernode
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "vulcano.configmapName" $ }}
-                  key: vulcano.pathmap.rendernode
-            - name: vulcano.pathmap.server
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "vulcano.configmapName" $ }}
-                  key: vulcano.pathmap.server
-            - name: vulcano.customCertficates
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "vulcano.configmapName" $ }}
-                  key: vulcano.customCertficates
-            - name: vulcano.folderscanner.templates
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "vulcano.configmapName" $ }}
-                  key: vulcano.folderscanner.templates
-            - name: vulcano.folderscanner.mediaFolder
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "vulcano.configmapName" $ }}
-                  key: vulcano.folderscanner.mediaFolder
-            - name: vulcano.folderscanner.proxyFolder
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "vulcano.configmapName" $ }}
-                  key: vulcano.folderscanner.proxyFolder
-            - name: vulcano.folderscanner.thumbFolder
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "vulcano.configmapName" $ }}
-                  key: vulcano.folderscanner.thumbFolder
-
-            # Scanner Configuration
-            - name: vulcano.folderscanner.startWatcher
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "vulcano.configmapName" $ }}
-                  key: vulcano.folderscanner.startWatcher
-            - name: vulcano.folderscanner.defaultBin
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "vulcano.configmapName" $ }}
-                  key: vulcano.folderscanner.defaultBin
-
-            # Feature Configuration
-            - name: vulcano.afx.render
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "vulcano.configmapName" $ }}
-                  key: vulcano.afx.render
-
-            # Housekeeping Configuration
-            - name: vulcano.housekeeping.enabled
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "vulcano.configmapName" $ }}
-                  key: vulcano.housekeeping.enabled
-
-            # Authentication
-            - name: login.mode
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "vulcano.configmapName" $ }}
-                  key: login.mode
-            {{- if has .Values.auth.mode (list "MICROSOFT" "BID") }}
-            - name: microsoft.auth.authority
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "vulcano.configmapName" $ }}
-                  key: microsoft.auth.authority
-            - name: microsoft.auth.clientId
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "vulcano.configmapName" $ }}
-                  key: microsoft.auth.clientId
-            {{- end }}
-
-            # Tomcat Configuration
-            - name: spring.servlet.multipart.max-file-size
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "vulcano.configmapName" $ }}
-                  key: spring.servlet.multipart.max-file-size
-            - name: spring.servlet.multipart.max-request-size
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "vulcano.configmapName" $ }}
-                  key: spring.servlet.multipart.max-request-size
+            # NOTE: plain (non-secret) config lives in the ConfigMap and is
+            # injected wholesale via `envFrom: configMapRef` below — including
+            # dotted keys like vulcano.pathmap.* and login.mode. Only
+            # secret-backed values need explicit env entries here.
 
             # Integration Secrets
             {{- if or .Values.integrations.helmut.existingSecret (coalesce .Values.integrations.helmut.clientSecret .Values.helmut.clientSecret) }}
