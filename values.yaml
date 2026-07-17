@@ -491,8 +491,8 @@ mongoBackup:
   mongo:
     # -- Override MongoDB host (default: derived from mongodb config)
     host: ""
-    # -- MongoDB port
-    port: 27017
+    # -- Override MongoDB port (default: derived from mongodb.port)
+    port: ""
     # -- Override MongoDB user (default: mongodb.auth.rootUsername)
     username: ""
   s3:

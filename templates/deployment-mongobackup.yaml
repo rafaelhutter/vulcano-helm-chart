@@ -48,7 +48,7 @@ spec:
             - name: MONGODB_HOST
               value: {{ $mb.mongo.host | default (include "vulcano.mongodb.host" .) | quote }}
             - name: MONGODB_PORT
-              value: {{ $mb.mongo.port | default 27017 | quote }}
+              value: {{ $mb.mongo.port | default $.Values.mongodb.port | default 27017 | quote }}
             - name: MONGODB_USER
               value: {{ $mb.mongo.username | default .Values.mongodb.auth.rootUsername | default "root" | quote }}
             - name: MONGODB_PASS
