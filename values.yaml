@@ -321,7 +321,8 @@ filetransfer:
       cpu: "100m"
       memory: "256Mi"
   properties:
-    server.port: "8999"
+    # server.port is derived from filetransfer.port; vulcano.baseUrl from the
+    # Vulcano Service – both injected by the template, do not set them here.
     springdoc.api-docs.path: "/api-docs"
     springdoc.swagger-ui.path: "/docs"
     # Absolute path where transferred files are written (must match the mounted PVC path)
@@ -331,8 +332,6 @@ filetransfer:
     transfer.logApiRequests: "false"
     # Transfer protocol / mode: ftp, sftp, or zdf (ZDF Upload Portal via TUS)
     transfer.type: ""
-    # URL of the Vulcano backend – when running in the same namespace use the K8s service name
-    vulcano.baseUrl: "http://vulcano:8889"
     # vulcano.username is always "service_admin" – injected automatically by the template
     # vulcano.password is injected automatically from auth.serviceAdminPassword – do not set here
 
@@ -361,7 +360,8 @@ dflconnector:
       cpu: "100m"
       memory: "256Mi"
   properties:
-    server.port: "8080"
+    # server.port is derived from dflconnector.port; vulcano.base.url from the
+    # Vulcano Service – both injected by the template, do not set them here.
     # MongoDB connection is derived from the chart-level mongodb configuration:
     # host     → mongodb.externalHost or internal service DNS
     # database → mongodb.database
@@ -369,8 +369,6 @@ dflconnector:
     logstash.enabled: "false"
     logging.level.root: "INFO"
     logging.level.de.moovit.vulcanodflconnector: "INFO"
-    # URL of the Vulcano backend – when running in the same namespace use the K8s service name
-    vulcano.base.url: "http://vulcano:8889/"
     # vulcano.base.service_admin_username is always "service_admin" – injected automatically by the template
     # vulcano.base.service_admin_password is injected automatically from auth.serviceAdminPassword – do not set here
     # Log all outgoing Vulcano HTTP requests for debugging
