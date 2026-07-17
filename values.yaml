@@ -155,14 +155,14 @@ vulcano:
       cpu: "500m"
       memory: "2Gi"
   livenessProbe:
-    enabled: false
+    enabled: true
     initialDelaySeconds: 30
     periodSeconds: 10
     timeoutSeconds: 3
     failureThreshold: 3
 
   readinessProbe:
-    enabled: false
+    enabled: true
     initialDelaySeconds: 30
     periodSeconds: 10
     timeoutSeconds: 3
