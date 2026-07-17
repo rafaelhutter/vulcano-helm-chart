@@ -790,7 +790,9 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | auth.microsoft.authority | string | `nil` | Microsoft Azure AD authority URL (used by MICROSOFT and BID modes) |
 | auth.microsoft.clientId | string | `nil` | Microsoft Azure AD client ID (used by MICROSOFT and BID modes) |
 | auth.mode | string | `"MICROSOFT"` | Authentication mode (MICROSOFT, KEYCLOAK, HELMUT, BID) |
-| auth.secret | string | `nil` | Authentication secret key |
+| auth.secret | string | `nil` | Authentication token-signing secret. Stored in the vulcano-credentials Secret (never the ConfigMap). Leave empty to keep the chart default. |
+| auth.secretExistingSecret | string | `""` | Name of an existing K8s Secret holding the auth token-signing secret. When set, `secret` is ignored, the chart does NOT write it to vulcano-credentials, and the deployment reads it from this Secret. |
+| auth.secretExistingSecretKey | string | `"auth-secret"` | Key inside secretExistingSecret that holds the auth secret. |
 | auth.serviceAdminPassword | string | `nil` | Service admin password for authentication. Stored in the vulcano-credentials Secret and shared by the vulcano, dflconnector and filetransfer deployments. |
 | auth.serviceAdminPasswordExistingSecret | string | `""` | Name of an existing K8s Secret holding the service admin password. When set, serviceAdminPassword is ignored, the chart does NOT write it to vulcano-credentials, and all three deployments read it from this Secret (keeps it out of values/Git). |
 | auth.serviceAdminPasswordExistingSecretKey | string | `"service-admin-password"` | Key inside serviceAdminPasswordExistingSecret that holds the password. |
@@ -929,7 +931,7 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | management.otlp.tracing.endpoint | string | `"http://localhost:4318/v1/traces"` | OTLP traces endpoint. → management.opentelemetry.tracing.export.otlp.endpoint |
 | management.otlp.tracing.samplingProbability | string | `"0.1"` | Fraction of traces to sample (0.0–1.0; 0.1 = 10% for prod, 1.0 for dev). → management.tracing.sampling.probability |
 | management.prometheus.metrics.export.enabled | string | `"true"` |  |
-| mongoBackup | object | `{"affinity":{},"database":"","enabled":false,"extraOpts":"--authenticationDatabase admin","image":{"pullPolicy":"IfNotPresent","repository":"docker.io/moovit/mongodb-s3-backup","tag":"latest"},"initBackup":true,"mongo":{"host":"","port":27017,"username":""},"nodeSelector":{},"resources":{},"retainCount":30,"s3":{"accessKeyId":"","backupFolder":"","bucket":"","endpointUrl":"","existingSecret":"","existingSecretAccessKeyIdKey":"AWS_ACCESS_KEY_ID","existingSecretSecretAccessKeyKey":"AWS_SECRET_ACCESS_KEY","region":"","secretAccessKey":""},"timezone":"Europe/Berlin","tolerations":[]}` | MongoDB → S3 backup (optional) Runs the moovit/mongodb-s3-backup image as a long-running Deployment that `mongodump`s MongoDB and uploads to S3 (initial backup on start, then the image's own internal ~24h loop — same as the Docker Swarm setup). Enable it in the release that owns the MongoDB you want to back up (e.g. vulcano-common for the shared instance). Connection details default to the chart's mongodb.* config; only the S3 destination + AWS credentials are required. |
+| mongoBackup | object | `{"affinity":{},"database":"","enabled":false,"extraOpts":"--authenticationDatabase admin","image":{"pullPolicy":"IfNotPresent","repository":"docker.io/moovit/mongodb-s3-backup","tag":"latest"},"initBackup":true,"mongo":{"host":"","port":27017,"username":""},"nodeSelector":{},"resources":{"limits":{"cpu":"500m","memory":"512Mi"},"requests":{"cpu":"100m","memory":"128Mi"}},"retainCount":30,"s3":{"accessKeyId":"","backupFolder":"","bucket":"","endpointUrl":"","existingSecret":"","existingSecretAccessKeyIdKey":"AWS_ACCESS_KEY_ID","existingSecretSecretAccessKeyKey":"AWS_SECRET_ACCESS_KEY","region":"","secretAccessKey":""},"timezone":"Europe/Berlin","tolerations":[]}` | MongoDB → S3 backup (optional) Runs the moovit/mongodb-s3-backup image as a long-running Deployment that `mongodump`s MongoDB and uploads to S3 (initial backup on start, then the image's own internal ~24h loop — same as the Docker Swarm setup). Enable it in the release that owns the MongoDB you want to back up (e.g. vulcano-common for the shared instance). Connection details default to the chart's mongodb.* config; only the S3 destination + AWS credentials are required. |
 | mongoBackup.affinity | object | `{}` | Affinity for the backup pod (falls back to chart-level affinity) |
 | mongoBackup.database | string | `""` | Specific database to dump (MONGODB_DB). Empty = all databases. |
 | mongoBackup.enabled | bool | `false` | Enable the MongoDB backup Deployment |
@@ -943,7 +945,7 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | mongoBackup.mongo.port | int | `27017` | MongoDB port |
 | mongoBackup.mongo.username | string | `""` | Override MongoDB user (default: mongodb.auth.rootUsername) |
 | mongoBackup.nodeSelector | object | `{}` | Node selector for the backup pod (falls back to chart-level nodeSelector) |
-| mongoBackup.resources | object | `{}` | Resource requests/limits for the backup container |
+| mongoBackup.resources | object | `{"limits":{"cpu":"500m","memory":"512Mi"},"requests":{"cpu":"100m","memory":"128Mi"}}` | Resource requests/limits for the backup container |
 | mongoBackup.retainCount | int | `30` | Number of backups to keep in S3 (older ones are pruned) |
 | mongoBackup.s3.accessKeyId | string | `""` | AWS access key id (used only when existingSecret is empty; put in values.secret.yaml) |
 | mongoBackup.s3.backupFolder | string | `""` | Folder/prefix inside the bucket |
@@ -1076,7 +1078,7 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | vulcano.license.existingSecret | string | `""` | Name of an existing Secret holding the license key. When set, `key` is ignored and the chart does NOT store the license in vulcano-credentials. |
 | vulcano.license.existingSecretKey | string | `"license-key"` | Key inside existingSecret that holds the license JWT (default: license-key). |
 | vulcano.license.key | string | `""` | License JWT. When set (and existingSecret is empty), written to the vulcano-credentials Secret under key `license-key`. |
-| vulcano.livenessProbe.enabled | bool | `false` |  |
+| vulcano.livenessProbe.enabled | bool | `true` |  |
 | vulcano.livenessProbe.failureThreshold | int | `3` |  |
 | vulcano.livenessProbe.initialDelaySeconds | int | `30` |  |
 | vulcano.livenessProbe.periodSeconds | int | `10` |  |
@@ -1087,7 +1089,7 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | vulcano.output.namePattern | string | `""` | Template pattern for PatternBasedOutputNameGenerator using placeholder syntax |
 | vulcano.panel.loginRequired | string | `"true"` | Require authentication for the Adobe Premiere Pro panel |
 | vulcano.projects.sortBy | string | `"NAME"` | Sorting criteria for project lists in searchProjects API |
-| vulcano.readinessProbe.enabled | bool | `false` |  |
+| vulcano.readinessProbe.enabled | bool | `true` |  |
 | vulcano.readinessProbe.failureThreshold | int | `3` |  |
 | vulcano.readinessProbe.initialDelaySeconds | int | `30` |  |
 | vulcano.readinessProbe.periodSeconds | int | `10` |  |
@@ -1102,7 +1104,7 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | vulcano.service.targetPort | int | `8889` | Target port |
 | vulcano.service.type | string | `"ClusterIP"` | Service type (ClusterIP, NodePort, LoadBalancer) |
 | vulcano.showAllBins | string | `"false"` | Controls whether the frontend displays all bins in the project structure or only those with content |
-| vulcano.storage.accessModes | string | `"ReadWriteOnce"` | Access mode for the PVC |
+| vulcano.storage.accessModes | string | `"ReadWriteMany"` | Access mode for the PVC. Defaults to ReadWriteMany: the primary volume is shared by the vulcano and filetransfer pods (and layered extraMounts), which need concurrent access across nodes. RWX also lets the deployment strategy auto-derive to RollingUpdate. Use ReadWriteOnce only for a single-pod install on RWO-only storage. |
 | vulcano.storage.annotations | object | `{}` | Annotations for the PVC. Example: set helm.sh/resource-policy: keep to prevent deletion on helm uninstall |
 | vulcano.storage.existingClaim | string | `""` | Name of an existing PVC to mount instead of creating a new one. When set, no PVC is created by the chart. Useful for custom CSI storage classes or pre-provisioned PV/PVCs. The PVC/PV itself can be deployed via extraObjects. |
 | vulcano.storage.extraMounts | list | `[]` | Additional per-folder mounts layered on top of the primary mount. Each entry is mounted on both the vulcano and filetransfer pods so the file tree stays consistent (filetransfer mounts read-only).  Each item requires `name` + `mountPath`, plus EITHER:   - `existingClaim`: use a pre-provisioned PVC (chart creates nothing), OR   - `pvc` (+ optional `size`/`accessModes`/`storageClass`/`labels`/`annotations`):     chart templates a fresh PVC for the entry. |
@@ -1111,7 +1113,7 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | vulcano.storage.pvc | string | `"smb-vulcano-data"` | Name of the PVC that is created by the chart (used when existingClaim is empty) |
 | vulcano.storage.size | string | `"10Gi"` |  |
 | vulcano.storage.storageClass | string | `"longhorn"` | Storage class for the PVC (leave empty for cluster default, set to "-" to omit storageClassName entirely) |
-| vulcano.strategy | string | `""` | Deployment update strategy. Leave empty for auto-detect (recommended): the chart picks "RollingUpdate" when ALL volumes are ReadWriteMany, and falls back to "Recreate" if any volume is ReadWriteOnce – otherwise a rolling update would hit a Multi-Attach error when the new pod is scheduled on a different node than the old one. Set explicitly to "Recreate" or "RollingUpdate" to override. |
+| vulcano.strategy | string | `""` | Deployment update strategy. Leave empty for auto-detect (recommended): the chart picks "RollingUpdate" when ALL volumes are ReadWriteMany, and falls back to "Recreate" if any volume is ReadWriteOnce – otherwise a rolling update would hit a Multi-Attach error when the new pod is scheduled on a different node than the old one. Volumes backed by an existingClaim are assumed ReadWriteMany. Set explicitly to "Recreate" or "RollingUpdate" to override. |
 | vulcano.subtitle | string | `""` | Custom subtitle text displayed in the web interface header |
 | vulcano.useCustomFileName | string | `"false"` | Allow users to specify custom filenames when creating assets instead of using auto-generated names |
 | vulcano.webconfig.disable | string | `"false"` | Disable the web-based configuration interface |
