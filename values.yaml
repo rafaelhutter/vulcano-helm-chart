@@ -176,8 +176,12 @@ vulcano:
     size: "10Gi"
     # -- Storage class for the PVC (leave empty for cluster default, set to "-" to omit storageClassName entirely)
     storageClass: "longhorn"
-    # -- Access mode for the PVC
-    accessModes: ReadWriteOnce
+    # -- Access mode for the PVC. Defaults to ReadWriteMany: the primary volume
+    # is shared by the vulcano and filetransfer pods (and layered extraMounts),
+    # which need concurrent access across nodes. RWX also lets the deployment
+    # strategy auto-derive to RollingUpdate. Use ReadWriteOnce only for a
+    # single-pod install on RWO-only storage.
+    accessModes: ReadWriteMany
     # -- Additional labels for the PVC
     labels: {}
     # -- Annotations for the PVC.
