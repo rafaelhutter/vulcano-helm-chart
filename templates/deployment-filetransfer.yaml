@@ -61,17 +61,26 @@ spec:
           env:
             - name: JAVA_TOOL_OPTIONS
               value: "-Dlogging.file.path=/app/logs -Dlogging.file.name=filetransfer.log"
+            {{- /* server.port and the Vulcano base URL are derived below from
+                   filetransfer.port and the Vulcano Service, so skip any copies
+                   in properties to keep a single source of truth. */}}
             {{- range $key, $val := .Values.filetransfer.properties }}
+            {{- if not (has $key (list "server.port" "vulcano.baseUrl")) }}
             - name: {{ $key }}
               value: {{ $val | quote }}
             {{- end }}
+            {{- end }}
+            - name: server.port
+              value: {{ .Values.filetransfer.port | default 8999 | quote }}
+            - name: vulcano.baseUrl
+              value: {{ include "vulcano.backendUrl" . | quote }}
             - name: vulcano.password
               valueFrom:
                 secretKeyRef:
                   name: {{ include "vulcano.serviceAdminPassword.secretName" . }}
                   key: {{ include "vulcano.serviceAdminPassword.secretKey" . }}
             - name: vulcano.username
-              value: "service_admin"
+              value: {{ include "vulcano.serviceAdminUsername" . | quote }}
 
           resources:
             {{- toYaml .Values.filetransfer.resources | nindent 12 }}

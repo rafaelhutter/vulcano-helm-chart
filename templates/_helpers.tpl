@@ -86,6 +86,20 @@ Get the namespace
 {{- end }}
 
 {{/*
+Vulcano built-in service-admin account name. Fixed by the application; kept in
+one place so the connectors that authenticate against Vulcano never diverge.
+*/}}
+{{- define "vulcano.serviceAdminUsername" -}}service_admin{{- end }}
+
+{{/*
+In-cluster base URL of the Vulcano backend Service (no trailing slash), derived
+from the Service name and port so the connectors don't hardcode "vulcano:8889".
+*/}}
+{{- define "vulcano.backendUrl" -}}
+{{- printf "http://%s:%v" (include "vulcano.fullname" .) .Values.vulcano.service.port -}}
+{{- end }}
+
+{{/*
 MongoDB connection string
 */}}
 {{- define "vulcano.mongodb.host" -}}
