@@ -54,7 +54,8 @@ vulcano:
   # the chart picks "RollingUpdate" when ALL volumes are ReadWriteMany, and
   # falls back to "Recreate" if any volume is ReadWriteOnce – otherwise a
   # rolling update would hit a Multi-Attach error when the new pod is
-  # scheduled on a different node than the old one. Set explicitly to
+  # scheduled on a different node than the old one. Volumes backed by an
+  # existingClaim are assumed ReadWriteMany. Set explicitly to
   # "Recreate" or "RollingUpdate" to override.
   strategy: ""
   service:
