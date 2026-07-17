@@ -77,9 +77,8 @@ spec:
             {{- toYaml .Values.vulcano.resources | nindent 12 }}
 
           env:
-            # Logging Configuration
-            - name: JAVA_TOOL_OPTIONS
-              value: "-Dlogging.file.path={{ .Values.vulcano.storage.mountPath }}/logs -Dlogging.file.name={{ .Values.logging.fileName }}"
+            {{- /* logging.file.path/name come from the ConfigMap (logging.filePath /
+                   logging.fileName) via envFrom below — single source, no JVM-arg copy. */}}
 
             # Service-admin password is sourced from the vulcano-credentials
             # Secret rather than the configmap so the value doesn't sit in
