@@ -1,6 +1,6 @@
 # vulcano
 
-![Version: 1.7.0](https://img.shields.io/badge/Version-1.7.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.9.31](https://img.shields.io/badge/AppVersion-1.9.31-informational?style=flat-square)
+![Version: 1.7.0](https://img.shields.io/badge/Version-1.7.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.9.50](https://img.shields.io/badge/AppVersion-1.9.50-informational?style=flat-square)
 
 Vulcano - Complete application deployment with MongoDB, RabbitMQ, and optional CSI driver
 
@@ -882,10 +882,10 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | housekeeping.maxAge | string | `"14"` | Maximum age in days for housekeeping items before they are automatically cleaned up |
 | imagePullSecrets | object | `{"enabled":true,"secrets":[{"name":"docker-io"}]}` | Image Pull Secrets configuration |
 | imagePullSecrets.enabled | bool | `true` | Enable image pull secrets |
-| images | object | `{"dflconnector":{"pullPolicy":"IfNotPresent","repository":"moovit/de.moovit.vulcano-dfl-connector","tag":"0.2.20"},"filetransfer":{"pullPolicy":"IfNotPresent","repository":"moovit/vulcano-filetransfer","tag":"0.0.10"},"vulcano":{"pullPolicy":"IfNotPresent","repository":"moovit/vulcano","tag":"1.9.31"}}` | Docker Image Configuration |
+| images | object | `{"dflconnector":{"pullPolicy":"IfNotPresent","repository":"moovit/de.moovit.vulcano-dfl-connector","tag":"0.2.20"},"filetransfer":{"pullPolicy":"IfNotPresent","repository":"moovit/vulcano-filetransfer","tag":"0.0.10"},"vulcano":{"pullPolicy":"IfNotPresent","repository":"moovit/vulcano","tag":"1.9.50"}}` | Docker Image Configuration |
 | images.vulcano.pullPolicy | string | `"IfNotPresent"` | Image pull policy |
 | images.vulcano.repository | string | `"moovit/vulcano"` | Docker repository for Vulcano application |
-| images.vulcano.tag | string | `"1.9.31"` | Docker image tag |
+| images.vulcano.tag | string | `"1.9.50"` | Docker image tag |
 | integrations | object | `{"adobe":{"apiKey":"CCHomeWeb1","clientId":"","clientToken":"","dumpFilepath":"","enabled":false,"librariesIgnore":"\"Library to Ignore\"","scan":"false","secret":""},"helmut":{"apiToken":"","baseUrl":"","clientId":"","clientSecret":"","cosmoBaseBreadcrumb":"","cosmoMappingDest":"","cosmoMappingSrc":"","cosmoSync":"false","existingPasswordKey":"helmut-client-secret","existingSecret":"","logRequest":"false","pageSize":"50"},"ndr":{"bidLookupUrl":"","existingPasswordKey":"ndr-vdb-password","existingSecret":"","vdbPassword":"","vdbServer":"","vdbSimulate":"false","vdbUsername":"","wikiUrl":"","wildcardBid":""},"octopus":{"api":"","clientDelayInMs":"5000","enabled":false,"existingPasswordKey":"octopus-password","existingSecret":"","password":"","startClient":"false","username":""},"vidispine":{"baseUrl":"","baseUrlAuth":"","clientId":"","clientSecret":"","defaultLocation":"","existingPasswordKey":"vidispine-client-secret","existingSecret":"","locationValuesUrl":"","storage":"","workflow":"","workflowMogrt":"","workflowVersion":"","workflowVersionMogrt":""}}` | ------------------------------------------------------------------------- |
 | integrations.adobe | object | `{"apiKey":"CCHomeWeb1","clientId":"","clientToken":"","dumpFilepath":"","enabled":false,"librariesIgnore":"\"Library to Ignore\"","scan":"false","secret":""}` | Adobe Creative Cloud Libraries integration |
 | integrations.adobe.apiKey | string | `"CCHomeWeb1"` | Adobe API Key for accessing Adobe Creative Cloud services |
