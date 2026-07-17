@@ -57,7 +57,9 @@ data:
   springdoc.swagger-ui.path: {{ .Values.springdoc.swaggerUi.path | default "/doc" | quote }}
 
   # Server Configuration
-  server.port: "8889"
+  {{- /* Single source of truth for the container port: server.port, the
+         Deployment containerPort and the Service targetPort all derive from it. */}}
+  server.port: {{ .Values.vulcano.service.targetPort | quote }}
   vulcano.webconfig.disable: {{ .Values.vulcano.webconfig.disable | default "false" | quote }}
 
   # Folder Configuration
