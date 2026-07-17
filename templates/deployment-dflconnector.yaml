@@ -16,6 +16,8 @@ spec:
       app: dflconnector
   template:
     metadata:
+      annotations:
+        checksum/secret: {{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}
       labels:
         {{- include "vulcano.selectorLabels" . | nindent 8 }}
         app: dflconnector
