@@ -1,5 +1,11 @@
 {{- if .Values.mongoBackup.enabled }}
 {{- $mb := .Values.mongoBackup }}
+{{- $mongoHost := $mb.mongo.host | default (include "vulcano.mongodb.host" .) }}
+{{- if and (not $mb.mongo.host) (.Values.mongodb.replicaSet | default dict).enabled }}
+{{/* mongodump needs the "rs/seed" form: a bare headless host round-robins each
+     parallel connection to a different member, so cursors die (CursorNotFound). */}}
+{{- $mongoHost = printf "%s/%s" (.Values.mongodb.replicaSet.name | default "rs0") $mongoHost }}
+{{- end }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -46,7 +52,7 @@ spec:
             # MongoDB connection — host/user/password derive from the chart's
             # mongodb.* configuration unless explicitly overridden here.
             - name: MONGODB_HOST
-              value: {{ $mb.mongo.host | default (include "vulcano.mongodb.host" .) | quote }}
+              value: {{ $mongoHost | quote }}
             - name: MONGODB_PORT
               value: {{ $mb.mongo.port | default $.Values.mongodb.port | default 27017 | quote }}
             - name: MONGODB_USER
