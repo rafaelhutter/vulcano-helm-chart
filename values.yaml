@@ -25,7 +25,7 @@ images:
     # -- Docker repository for Vulcano application
     repository: "moovit/vulcano"
     # -- Docker image tag
-    tag: "1.9.58"
+    tag: "2026.1.17"
     # -- Image pull policy
     pullPolicy: "IfNotPresent"
 
