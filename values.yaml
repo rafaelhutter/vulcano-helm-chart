@@ -31,7 +31,7 @@ images:
 
   filetransfer:
     repository: "moovit/vulcano-filetransfer"
-    tag: "0.0.10"
+    tag: "0.0.13"
     pullPolicy: "IfNotPresent"
 
   dflconnector:
