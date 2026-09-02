@@ -1,6 +1,6 @@
 # vulcano
 
-![Version: 1.7.4](https://img.shields.io/badge/Version-1.7.4-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2026.1.19](https://img.shields.io/badge/AppVersion-2026.1.19-informational?style=flat-square)
+![Version: 1.7.5](https://img.shields.io/badge/Version-1.7.5-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2026.1.19](https://img.shields.io/badge/AppVersion-2026.1.19-informational?style=flat-square)
 
 Vulcano - Complete application deployment with MongoDB, RabbitMQ, and optional CSI driver
 
@@ -882,7 +882,7 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | housekeeping.maxAge | string | `"14"` | Maximum age in days for housekeeping items before they are automatically cleaned up |
 | imagePullSecrets | object | `{"enabled":true,"secrets":[{"name":"docker-io"}]}` | Image Pull Secrets configuration |
 | imagePullSecrets.enabled | bool | `true` | Enable image pull secrets |
-| images | object | `{"dflconnector":{"pullPolicy":"IfNotPresent","repository":"moovit/de.moovit.vulcano-dfl-connector","tag":"0.2.20"},"filetransfer":{"pullPolicy":"IfNotPresent","repository":"moovit/vulcano-filetransfer","tag":"0.0.13"},"vulcano":{"pullPolicy":"IfNotPresent","repository":"moovit/vulcano","tag":"2026.1.19"}}` | Docker Image Configuration |
+| images | object | `{"dflconnector":{"pullPolicy":"IfNotPresent","repository":"moovit/de.moovit.vulcano-dfl-connector","tag":"0.2.20"},"filetransfer":{"pullPolicy":"IfNotPresent","repository":"moovit/vulcano-filetransfer","tag":"0.0.14"},"vulcano":{"pullPolicy":"IfNotPresent","repository":"moovit/vulcano","tag":"2026.1.19"}}` | Docker Image Configuration |
 | images.vulcano.pullPolicy | string | `"IfNotPresent"` | Image pull policy |
 | images.vulcano.repository | string | `"moovit/vulcano"` | Docker repository for Vulcano application |
 | images.vulcano.tag | string | `"2026.1.19"` | Docker image tag |
