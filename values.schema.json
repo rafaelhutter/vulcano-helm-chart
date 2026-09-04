@@ -229,7 +229,15 @@
         "enabled": { "type": "boolean" },
         "port": { "type": "integer" },
         "resources": { "$ref": "#/$defs/resourceRequirements" },
-        "properties": { "type": "object" }
+        "properties": { "type": "object" },
+        "tams": {
+          "type": "object",
+          "properties": {
+            "password": { "type": "string" },
+            "existingSecret": { "type": "string" },
+            "existingSecretKey": { "type": "string" }
+          }
+        }
       }
     },
 

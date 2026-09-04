@@ -34,6 +34,9 @@ spec:
     metadata:
       annotations:
         checksum/credentials: {{ include "vulcano.serviceAdminPassword" . | sha256sum | quote }}
+        {{- if .Values.filetransfer.tams.password }}
+        checksum/tams-credentials: {{ .Values.filetransfer.tams.password | sha256sum | quote }}
+        {{- end }}
         {{- if .Values.filetransfer.zdfTargets }}
         checksum/zdf-targets: {{ .Values.filetransfer.zdfTargets | toJson | sha256sum | quote }}
         {{- end }}
@@ -61,11 +64,11 @@ spec:
           env:
             - name: JAVA_TOOL_OPTIONS
               value: "-Dlogging.file.path=/app/logs -Dlogging.file.name=filetransfer.log"
-            {{- /* server.port and the Vulcano base URL are derived below from
-                   filetransfer.port and the Vulcano Service, so skip any copies
-                   in properties to keep a single source of truth. */}}
+            {{- /* server.port, the Vulcano base URL and the TAMS password are
+                   derived below, so skip any copies in properties to keep a
+                   single source of truth. */}}
             {{- range $key, $val := .Values.filetransfer.properties }}
-            {{- if not (has $key (list "server.port" "vulcano.baseUrl")) }}
+            {{- if not (has $key (list "server.port" "vulcano.baseUrl" "tams.password")) }}
             - name: {{ $key }}
               value: {{ $val | quote }}
             {{- end }}
@@ -81,6 +84,18 @@ spec:
                   key: {{ include "vulcano.serviceAdminPassword.secretKey" . }}
             - name: vulcano.username
               value: {{ include "vulcano.serviceAdminUsername" . | quote }}
+            {{- if or .Values.filetransfer.tams.password .Values.filetransfer.tams.existingSecret }}
+            - name: tams.password
+              valueFrom:
+                secretKeyRef:
+                  {{- if .Values.filetransfer.tams.existingSecret }}
+                  name: {{ .Values.filetransfer.tams.existingSecret }}
+                  key: {{ .Values.filetransfer.tams.existingSecretKey | default "tams-password" }}
+                  {{- else }}
+                  name: tams-credentials
+                  key: tams-password
+                  {{- end }}
+            {{- end }}
 
           resources:
             {{- toYaml .Values.filetransfer.resources | nindent 12 }}
