@@ -31,7 +31,7 @@ images:
 
   filetransfer:
     repository: "moovit/vulcano-filetransfer"
-    tag: "0.0.14"
+    tag: "0.0.15"
     pullPolicy: "IfNotPresent"
 
   dflconnector:
@@ -330,10 +330,31 @@ filetransfer:
     # transfer.destination: "/path/to/destination"
     # Log all incoming API requests for debugging
     transfer.logApiRequests: "false"
-    # Transfer protocol / mode: ftp, sftp, or zdf (ZDF Upload Portal via TUS)
+    # Transfer protocol / mode: ftp, sftp, zdf (ZDF Upload Portal via TUS)
+    # or tams (ingest as graphics into a TAMS server)
     transfer.type: ""
+    # TAMS route only – assets are filed under <tams.baseFolder>/<project>.
+    # Motion graphics are transcoded to VP9/WebM (alpha-capable, browser-playable),
+    # so give the pod real CPU when transfer.type is "tams".
+    # tams.baseUrl: "https://tams.example.com"
+    # tams.username: ""
+    # tams.tenant: ""        # only for a multi-tenant TAMS
+    # tams.baseFolder: "Vulcano"
+    # tams.password lives under filetransfer.tams below – it is injected from a
+    # Secret, so a copy here would be ignored by the template
     # vulcano.username is always "service_admin" – injected automatically by the template
     # vulcano.password is injected automatically from auth.serviceAdminPassword – do not set here
+
+  # TAMS route credentials. Kept out of `properties` so the password can be held
+  # in a Secret instead of a plaintext env var.
+  tams:
+    # -- TAMS password. Set via values.secret.yaml; rendered into the chart-managed
+    # "tams-credentials" Secret.
+    password: ""
+    # -- Name of an externally managed Secret holding the password instead.
+    existingSecret: ""
+    # -- Key within existingSecret. Defaults to "tams-password".
+    existingSecretKey: ""
 
   # ZDF Upload Portal targets – only required when transfer.type is "zdf".
   # Rendered as /zdf-targets.json inside the container (mounted via ConfigMap).

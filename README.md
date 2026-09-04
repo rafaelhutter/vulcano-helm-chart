@@ -1,6 +1,6 @@
 # vulcano
 
-![Version: 1.7.5](https://img.shields.io/badge/Version-1.7.5-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2026.1.19](https://img.shields.io/badge/AppVersion-2026.1.19-informational?style=flat-square)
+![Version: 1.8.0](https://img.shields.io/badge/Version-1.8.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2026.1.19](https://img.shields.io/badge/AppVersion-2026.1.19-informational?style=flat-square)
 
 Vulcano - Complete application deployment with MongoDB, RabbitMQ, and optional CSI driver
 
@@ -850,7 +850,10 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | features.ignoreMogrt | string | `"false"` | Ignore MOGRT files during template scanning and processing |
 | features.logThirdPartyRequests | string | `"false"` | Enable detailed logging of all HTTP requests made to external APIs |
 | features.maxNameLength | string | `"200"` | Maximum character limit for asset names and file names |
-| filetransfer | object | `{"enabled":false,"name":"vulcano-transfer","port":8999,"properties":{"springdoc.api-docs.path":"/api-docs","springdoc.swagger-ui.path":"/docs","transfer.logApiRequests":"false","transfer.type":""},"resources":{"limits":{"cpu":"500m","memory":"512Mi"},"requests":{"cpu":"100m","memory":"256Mi"}}}` | ------------------------------------------------------------------------- |
+| filetransfer | object | `{"enabled":false,"name":"vulcano-transfer","port":8999,"properties":{"springdoc.api-docs.path":"/api-docs","springdoc.swagger-ui.path":"/docs","transfer.logApiRequests":"false","transfer.type":""},"resources":{"limits":{"cpu":"500m","memory":"512Mi"},"requests":{"cpu":"100m","memory":"256Mi"}},"tams":{"existingSecret":"","existingSecretKey":"","password":""}}` | ------------------------------------------------------------------------- |
+| filetransfer.tams.existingSecret | string | `""` | Name of an externally managed Secret holding the password instead. |
+| filetransfer.tams.existingSecretKey | string | `""` | Key within existingSecret. Defaults to "tams-password". |
+| filetransfer.tams.password | string | `""` | TAMS password. Set via values.secret.yaml; rendered into the chart-managed "tams-credentials" Secret. |
 | folderScanner.allowEmptyFolder | string | `"true"` | Allow creation and preservation of empty folders in the file system structure |
 | folderScanner.defaultBin | string | `"Templates"` | Default folder name used for organizing templates and assets when no specific bin is specified |
 | folderScanner.maxDepth | string | `"10"` | Maximum folder depth level for recursive scanning operations |
@@ -882,7 +885,7 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | housekeeping.maxAge | string | `"14"` | Maximum age in days for housekeeping items before they are automatically cleaned up |
 | imagePullSecrets | object | `{"enabled":true,"secrets":[{"name":"docker-io"}]}` | Image Pull Secrets configuration |
 | imagePullSecrets.enabled | bool | `true` | Enable image pull secrets |
-| images | object | `{"dflconnector":{"pullPolicy":"IfNotPresent","repository":"moovit/de.moovit.vulcano-dfl-connector","tag":"0.2.20"},"filetransfer":{"pullPolicy":"IfNotPresent","repository":"moovit/vulcano-filetransfer","tag":"0.0.14"},"vulcano":{"pullPolicy":"IfNotPresent","repository":"moovit/vulcano","tag":"2026.1.19"}}` | Docker Image Configuration |
+| images | object | `{"dflconnector":{"pullPolicy":"IfNotPresent","repository":"moovit/de.moovit.vulcano-dfl-connector","tag":"0.2.20"},"filetransfer":{"pullPolicy":"IfNotPresent","repository":"moovit/vulcano-filetransfer","tag":"0.0.15"},"vulcano":{"pullPolicy":"IfNotPresent","repository":"moovit/vulcano","tag":"2026.1.19"}}` | Docker Image Configuration |
 | images.vulcano.pullPolicy | string | `"IfNotPresent"` | Image pull policy |
 | images.vulcano.repository | string | `"moovit/vulcano"` | Docker repository for Vulcano application |
 | images.vulcano.tag | string | `"2026.1.19"` | Docker image tag |
