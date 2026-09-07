@@ -23,14 +23,23 @@ jobs:
         run: helm dependency update
 
       - name: Package chart and generate index
-        run: |
-          helm package .
-          helm repo index . --url https://rafaelhutter.github.io/vulcano-helm-chart
-
-      - name: Prepare Pages content
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p public
-          cp *.tgz index.yaml public/
+          # Pages is replaced wholesale on every deploy, so the index must be
+          # rebuilt from every .tgz that is already published, not just the current one.
+          BASE=https://rafaelhutter.github.io/vulcano-helm-chart
+          curl -fsSL "$BASE/index.yaml" -o /tmp/live-index.yaml || : > /tmp/live-index.yaml
+          grep -oE "$BASE/vulcano-[^ ]+\\.tgz" /tmp/live-index.yaml | sort -u | while read -r u; do
+            curl -fsSL "$u" -o "public/$(basename "$u")" || rm -f "public/$(basename "$u")"
+          done
+          for tag in $(gh release list --limit 500 --json tagName -q '.[].tagName'); do
+            gh release download "$tag" --pattern 'vulcano-*.tgz' --dir public --clobber
+          done
+          cp vulcano-*.tgz public/ 2>/dev/null || true
+          helm package . --destination public
+          helm repo index public --url https://rafaelhutter.github.io/vulcano-helm-chart
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
