@@ -376,6 +376,8 @@
       "properties": {
         "enabled": { "type": "boolean" },
         "externalHost": { "type": "string" },
+        "port": { "type": "integer" },
+        "virtualHost": { "type": "string" },
         "fullnameOverride": { "type": "string" },
         "replicaCount": { "type": "integer", "minimum": 1 },
         "auth": {

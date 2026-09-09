@@ -562,6 +562,10 @@ rabbitmq:
   externalHost: ""
   # -- RabbitMQ AMQP port Vulcano connects to (defaults to 5672). Override for non-standard external ports.
   port: 5672
+  # -- RabbitMQ virtual host. Empty = the broker default "/". Set a per-instance vhost
+  # (e.g. "vulcano-test") to isolate this instance's queues on a shared broker; the vhost
+  # must already exist there and the render nodes must use the same one.
+  virtualHost: ""
   # -- Full name override for RabbitMQ resources
   fullnameOverride: "rabbitmq"
   # -- Number of RabbitMQ replicas. 1 = single node (default); scale up for HA —

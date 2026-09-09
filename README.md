@@ -1,6 +1,6 @@
 # vulcano
 
-![Version: 1.8.2](https://img.shields.io/badge/Version-1.8.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2026.1.19](https://img.shields.io/badge/AppVersion-2026.1.19-informational?style=flat-square)
+![Version: 1.9.0](https://img.shields.io/badge/Version-1.9.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2026.1.19](https://img.shields.io/badge/AppVersion-2026.1.19-informational?style=flat-square)
 
 Vulcano - Complete application deployment with MongoDB, RabbitMQ, and optional CSI driver
 
@@ -612,6 +612,35 @@ Repeat Step 2 for every additional Vulcano instance, changing `global.namespace`
 > Using a dedicated `extraObjects` service (instead of patching the sub-chart service) ensures the
 > NodePort is **declarative** and survives every `helm upgrade` without manual intervention.
 
+> **ℹ️ RabbitMQ – dedicated render nodes via a virtual host**
+>
+> Instances sharing one broker also share the `vulcano.jobs` dispatch queue, so any render node can
+> pick up any instance's jobs (only `rabbitmq.jobUpdateQueue` is per-instance). Move an instance onto
+> its own vhost to give it its own render nodes:
+>
+> ```yaml
+> rabbitmq:
+>   virtualHost: "vulcano-test"    # must already exist on the broker
+> ```
+>
+> The chart does not manage broker-side objects, so create the vhost once and grant the Vulcano user
+> access to it:
+>
+> ```bash
+> kubectl exec -n vulcano-common rabbitmq-0 -- rabbitmqctl add_vhost vulcano-test
+> kubectl exec -n vulcano-common rabbitmq-0 -- \
+>   rabbitmqctl set_permissions -p vulcano-test vulcano ".*" ".*" ".*"
+> ```
+>
+> Its render nodes must use the same vhost — as the path of the AMQP URI (do not append the address,
+> `addresses` is a failover list for one broker):
+>
+> ```properties
+> spring.rabbitmq.addresses=amqp://<user>:<password>@10.10.10.35:32672/vulcano-test,amqp://<user>:<password>@10.10.10.46:32672/vulcano-test
+> ```
+>
+> A render node left on the default `/` vhost keeps serving the instances that stayed there.
+
 > **ℹ️ RabbitMQ – LoadBalancer alternative**
 >
 > If the cluster has a LoadBalancer controller (MetalLB on bare metal, or a cloud LB), you can give the
@@ -1027,7 +1056,7 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | octopus.username | string | `""` |  |
 | project.delete.ownerOnly | string | `"true"` | Only allow project deletion by the owner |
 | project.sendToUrls | string | `""` | URLs to send project data to external systems |
-| rabbitmq | object | `{"auth":{"erlangCookie":"VULCANO_SECRET_COOKIE","existingErlangCookieKey":"erlang-cookie","existingPasswordKey":"password","existingSecret":"","password":"vulcano0479","username":"vulcano"},"enabled":true,"externalHost":"","fullnameOverride":"rabbitmq","jobUpdateQueue":"vulcano-job-updates","metrics":{"enabled":false},"peerDiscoveryK8sPlugin":{"enabled":true},"persistence":{"enabled":false},"port":5672,"replicaCount":1,"resources":{"limits":{"cpu":"1000m","memory":"2Gi"},"requests":{"cpu":"500m","memory":"1Gi"}},"service":{"type":"NodePort"}}` | RabbitMQ Configuration |
+| rabbitmq | object | `{"auth":{"erlangCookie":"VULCANO_SECRET_COOKIE","existingErlangCookieKey":"erlang-cookie","existingPasswordKey":"password","existingSecret":"","password":"vulcano0479","username":"vulcano"},"enabled":true,"externalHost":"","fullnameOverride":"rabbitmq","jobUpdateQueue":"vulcano-job-updates","metrics":{"enabled":false},"peerDiscoveryK8sPlugin":{"enabled":true},"persistence":{"enabled":false},"port":5672,"replicaCount":1,"resources":{"limits":{"cpu":"1000m","memory":"2Gi"},"requests":{"cpu":"500m","memory":"1Gi"}},"service":{"type":"NodePort"},"virtualHost":""}` | RabbitMQ Configuration |
 | rabbitmq.auth.erlangCookie | string | `"VULCANO_SECRET_COOKIE"` | Erlang cookie for RabbitMQ clustering (ignored when existingSecret is set) |
 | rabbitmq.auth.existingErlangCookieKey | string | `"erlang-cookie"` | Key inside existingSecret that holds the Erlang cookie |
 | rabbitmq.auth.existingPasswordKey | string | `"password"` | Key inside existingSecret that holds the RabbitMQ password. Default "password" matches the keys written by the cloudpirates/rabbitmq sub-chart's own Secret. Override only when pointing at an externally managed Secret that uses a different key name (e.g. "rabbitmq-password" from a Bitwarden mapping or legacy Bitnami secret). |
@@ -1044,6 +1073,7 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | rabbitmq.port | int | `5672` | RabbitMQ AMQP port Vulcano connects to (defaults to 5672). Override for non-standard external ports. |
 | rabbitmq.replicaCount | int | `1` | Number of RabbitMQ replicas. 1 = single node (default); scale up for HA — clustering is pre-enabled (peerDiscoveryK8sPlugin) so >1 forms a real cluster, not split-brain. The classic priority job queue isn't message-replicated, but the server rebuilds it from the DB, so in-flight jobs re-queue after a node failure. |
 | rabbitmq.service.type | string | `"NodePort"` | RabbitMQ service type (ClusterIP, NodePort, LoadBalancer) |
+| rabbitmq.virtualHost | string | `""` | RabbitMQ virtual host. Empty = the broker default "/". Set a per-instance vhost (e.g. "vulcano-test") to isolate this instance's queues on a shared broker; the vhost must already exist there and the render nodes must use the same one. |
 | rbac.create | bool | `true` |  |
 | securityContext.fsGroup | int | `1001` |  |
 | securityContext.runAsNonRoot | bool | `true` |  |

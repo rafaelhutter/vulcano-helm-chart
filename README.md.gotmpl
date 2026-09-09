@@ -601,6 +601,35 @@ Repeat Step 2 for every additional Vulcano instance, changing `global.namespace`
 > Using a dedicated `extraObjects` service (instead of patching the sub-chart service) ensures the
 > NodePort is **declarative** and survives every `helm upgrade` without manual intervention.
 
+> **ℹ️ RabbitMQ – dedicated render nodes via a virtual host**
+>
+> Instances sharing one broker also share the `vulcano.jobs` dispatch queue, so any render node can
+> pick up any instance's jobs (only `rabbitmq.jobUpdateQueue` is per-instance). Move an instance onto
+> its own vhost to give it its own render nodes:
+>
+> ```yaml
+> rabbitmq:
+>   virtualHost: "vulcano-test"    # must already exist on the broker
+> ```
+>
+> The chart does not manage broker-side objects, so create the vhost once and grant the Vulcano user
+> access to it:
+>
+> ```bash
+> kubectl exec -n vulcano-common rabbitmq-0 -- rabbitmqctl add_vhost vulcano-test
+> kubectl exec -n vulcano-common rabbitmq-0 -- \
+>   rabbitmqctl set_permissions -p vulcano-test vulcano ".*" ".*" ".*"
+> ```
+>
+> Its render nodes must use the same vhost — as the path of the AMQP URI (do not append the address,
+> `addresses` is a failover list for one broker):
+>
+> ```properties
+> spring.rabbitmq.addresses=amqp://<user>:<password>@10.10.10.35:32672/vulcano-test,amqp://<user>:<password>@10.10.10.46:32672/vulcano-test
+> ```
+>
+> A render node left on the default `/` vhost keeps serving the instances that stayed there.
+
 > **ℹ️ RabbitMQ – LoadBalancer alternative**
 >
 > If the cluster has a LoadBalancer controller (MetalLB on bare metal, or a cloud LB), you can give the

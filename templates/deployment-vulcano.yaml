@@ -106,6 +106,10 @@ spec:
               value: {{ include "vulcano.rabbitmq.host" . | quote }}
             - name: spring.rabbitmq.port
               value: {{ .Values.rabbitmq.port | default 5672 | quote }}
+            {{- with .Values.rabbitmq.virtualHost }}
+            - name: spring.rabbitmq.virtual-host
+              value: {{ . | quote }}
+            {{- end }}
             {{- if or .Values.rabbitmq.enabled .Values.rabbitmq.externalHost }}
             - name: spring.rabbitmq.username
               valueFrom:
