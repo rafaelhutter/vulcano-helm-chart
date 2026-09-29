@@ -26,6 +26,7 @@
 # (top-level only — sub-chart tarballs under charts/*.tgz are required deps).
 /vulcano-*.tgz
 /index.yaml
+/public/
 /check-values.sh
 deployments/
 .claude/
