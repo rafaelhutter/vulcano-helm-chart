@@ -154,18 +154,27 @@ vulcano:
     requests:
       cpu: "500m"
       memory: "2Gi"
+  # -- Holds liveness/readiness off until Spring has started (up to ~3 min), so a slow
+  # start (Mongo/RabbitMQ still booting, CPU contention) is not killed mid-startup.
+  startupProbe:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 5
+    failureThreshold: 36
+
   livenessProbe:
     enabled: true
-    initialDelaySeconds: 30
+    initialDelaySeconds: 0
     periodSeconds: 10
-    timeoutSeconds: 3
+    timeoutSeconds: 5
     failureThreshold: 3
 
   readinessProbe:
     enabled: true
-    initialDelaySeconds: 30
+    initialDelaySeconds: 0
     periodSeconds: 10
-    timeoutSeconds: 3
+    timeoutSeconds: 5
     failureThreshold: 3
 
   # Storage configuration

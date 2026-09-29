@@ -1,6 +1,6 @@
 # vulcano
 
-![Version: 1.9.0](https://img.shields.io/badge/Version-1.9.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2026.1.19](https://img.shields.io/badge/AppVersion-2026.1.19-informational?style=flat-square)
+![Version: 1.9.1](https://img.shields.io/badge/Version-1.9.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2026.1.19](https://img.shields.io/badge/AppVersion-2026.1.19-informational?style=flat-square)
 
 Vulcano - Complete application deployment with MongoDB, RabbitMQ, and optional CSI driver
 
@@ -1151,9 +1151,9 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | vulcano.license.key | string | `""` | License JWT. When set (and existingSecret is empty), written to the vulcano-credentials Secret under key `license-key`. |
 | vulcano.livenessProbe.enabled | bool | `true` |  |
 | vulcano.livenessProbe.failureThreshold | int | `3` |  |
-| vulcano.livenessProbe.initialDelaySeconds | int | `30` |  |
+| vulcano.livenessProbe.initialDelaySeconds | int | `0` |  |
 | vulcano.livenessProbe.periodSeconds | int | `10` |  |
-| vulcano.livenessProbe.timeoutSeconds | int | `3` |  |
+| vulcano.livenessProbe.timeoutSeconds | int | `5` |  |
 | vulcano.maxPropertiesInNames | string | `"5"` | Maximum number of template properties that can be used in auto-generated asset names |
 | vulcano.maxPropertyLength | string | `"10"` | Maximum character length for individual property values used in asset names |
 | vulcano.media.dockerHighresPath | string | `""` |  |
@@ -1162,9 +1162,9 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | vulcano.projects.sortBy | string | `"NAME"` | Sorting criteria for project lists in searchProjects API |
 | vulcano.readinessProbe.enabled | bool | `true` |  |
 | vulcano.readinessProbe.failureThreshold | int | `3` |  |
-| vulcano.readinessProbe.initialDelaySeconds | int | `30` |  |
+| vulcano.readinessProbe.initialDelaySeconds | int | `0` |  |
 | vulcano.readinessProbe.periodSeconds | int | `10` |  |
-| vulcano.readinessProbe.timeoutSeconds | int | `3` |  |
+| vulcano.readinessProbe.timeoutSeconds | int | `5` |  |
 | vulcano.replicaCount | int | `1` |  |
 | vulcano.resources.limits.cpu | string | `"2000m"` |  |
 | vulcano.resources.limits.memory | string | `"4Gi"` |  |
@@ -1175,6 +1175,7 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | vulcano.service.targetPort | int | `8889` | Target port |
 | vulcano.service.type | string | `"ClusterIP"` | Service type (ClusterIP, NodePort, LoadBalancer) |
 | vulcano.showAllBins | string | `"false"` | Controls whether the frontend displays all bins in the project structure or only those with content |
+| vulcano.startupProbe | object | `{"enabled":true,"failureThreshold":36,"initialDelaySeconds":10,"periodSeconds":5,"timeoutSeconds":5}` | Holds liveness/readiness off until Spring has started (up to ~3 min), so a slow start (Mongo/RabbitMQ still booting, CPU contention) is not killed mid-startup. |
 | vulcano.storage.accessModes | string | `"ReadWriteMany"` | Access mode for the PVC. Defaults to ReadWriteMany: the primary volume is shared by the vulcano and filetransfer pods (and layered extraMounts), which need concurrent access across nodes. RWX also lets the deployment strategy auto-derive to RollingUpdate. Use ReadWriteOnce only for a single-pod install on RWO-only storage. |
 | vulcano.storage.annotations | object | `{}` | Annotations for the PVC. Example: set helm.sh/resource-policy: keep to prevent deletion on helm uninstall |
 | vulcano.storage.existingClaim | string | `""` | Name of an existing PVC to mount instead of creating a new one. When set, no PVC is created by the chart. Useful for custom CSI storage classes or pre-provisioned PV/PVCs. The PVC/PV itself can be deployed via extraObjects. |

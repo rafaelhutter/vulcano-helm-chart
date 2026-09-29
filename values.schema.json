@@ -151,6 +151,7 @@
           }
         },
         "resources": { "$ref": "#/$defs/resourceRequirements" },
+        "startupProbe": { "$ref": "#/$defs/probeConfig" },
         "livenessProbe": { "$ref": "#/$defs/probeConfig" },
         "readinessProbe": { "$ref": "#/$defs/probeConfig" },
         "storage": {

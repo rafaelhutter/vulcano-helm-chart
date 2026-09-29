@@ -75,6 +75,13 @@ vulcano:
       memory: "2Gi"
 
   # Health checks
+  startupProbe:
+    enabled: false
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 5
+    failureThreshold: 36
+
   livenessProbe:
     enabled: false
     initialDelaySeconds: 30

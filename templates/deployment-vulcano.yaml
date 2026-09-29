@@ -51,6 +51,17 @@ spec:
               containerPort: {{ .Values.vulcano.service.targetPort }}
               protocol: TCP
 
+          {{- if .Values.vulcano.startupProbe.enabled }}
+          startupProbe:
+            initialDelaySeconds: {{ .Values.vulcano.startupProbe.initialDelaySeconds }}
+            failureThreshold: {{ .Values.vulcano.startupProbe.failureThreshold }}
+            periodSeconds: {{ .Values.vulcano.startupProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.vulcano.startupProbe.timeoutSeconds }}
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+          {{- end }}
+
           {{- if .Values.vulcano.livenessProbe.enabled }}
           livenessProbe:
             initialDelaySeconds: {{ .Values.vulcano.livenessProbe.initialDelaySeconds }}
