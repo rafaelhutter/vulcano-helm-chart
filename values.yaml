@@ -719,8 +719,9 @@ management:
       # -- Enable the Prometheus actuator endpoint
       enabled: "true"
     health:
-      # -- When to show full health details in the health endpoint response
-      showDetails: "always"
+      # -- When to show full health details. Health is public (probes), and its details list the
+      # Mongo databases, disk and broker versions, so keep "never" unless only admins can reach it.
+      showDetails: "never"
       group:
         readiness:
           # -- Components to include in the readiness health check
@@ -741,13 +742,9 @@ management:
     livenessstate:
       # -- Enable the liveness state health indicator
       enabled: "true"
-      # -- Show detailed information in liveness state health checks
-      showDetails: "always"
     readinessstate:
       # -- Enable the readiness state health indicator
       enabled: "true"
-      # -- Show detailed information in readiness state health checks
-      showDetails: "always"
   # OpenTelemetry (OTLP) export (Vulcano 1.9.31+). Exports distributed traces,
   # metrics, and structured logs to an OTLP collector (OpenTelemetry Collector,
   # Grafana/Tempo, Jaeger, etc.). All signals are DISABLED by default; enable

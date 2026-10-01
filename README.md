@@ -1008,13 +1008,11 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | logging.level.securityFilter | string | `"WARN"` | Logging level for the security filter |
 | management.endpoint.caches.enabled | string | `"true"` | Enable the caches actuator endpoint |
 | management.endpoint.health.group.readiness.include | string | `"rabbit,diskSpace,mongo,ping"` | Components to include in the readiness health check |
-| management.endpoint.health.showDetails | string | `"always"` | When to show full health details in the health endpoint response |
+| management.endpoint.health.showDetails | string | `"never"` | When to show full health details. Health is public (probes), and its details list the Mongo databases, disk and broker versions, so keep "never" unless only admins can reach it. |
 | management.endpoint.prometheus.enabled | string | `"true"` | Enable the Prometheus actuator endpoint |
 | management.endpoints.web.exposure.include | string | `"health,beans,loggers,env,prometheus,metrics"` | Comma-separated list of actuator endpoints to expose via web |
 | management.health.livenessstate.enabled | string | `"true"` | Enable the liveness state health indicator |
-| management.health.livenessstate.showDetails | string | `"always"` | Show detailed information in liveness state health checks |
 | management.health.readinessstate.enabled | string | `"true"` | Enable the readiness state health indicator |
-| management.health.readinessstate.showDetails | string | `"always"` | Show detailed information in readiness state health checks |
 | management.metrics.distribution.percentilesHistogram | string | `"true"` |  |
 | management.metrics.distribution.slo | string | `"50ms, 100ms, 200ms, 300ms, 500ms, 1s"` |  |
 | management.metrics.enable.all | string | `"true"` |  |

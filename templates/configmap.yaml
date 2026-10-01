@@ -29,11 +29,9 @@ data:
   management.metrics.distribution.percentiles-histogram.http.server.requests: {{ .Values.management.metrics.distribution.percentilesHistogram | default "true" | quote }}
   management.metrics.distribution.slo.http.server.requests: {{ .Values.management.metrics.distribution.slo | default "50ms, 100ms, 200ms, 300ms, 500ms, 1s" | quote }}
   management.metrics.enable.all: {{ .Values.management.metrics.enable.all | default "true" | quote }}
-  management.endpoint.health.show-details: {{ .Values.management.endpoint.health.showDetails | default "always" | quote }}
+  management.endpoint.health.show-details: {{ .Values.management.endpoint.health.showDetails | default "never" | quote }}
   management.health.livenessstate.enabled: {{ .Values.management.health.livenessstate.enabled | default "true" | quote }}
   management.health.readinessstate.enabled: {{ .Values.management.health.readinessstate.enabled | default "true" | quote }}
-  management.health.livenessstate.show-details: {{ .Values.management.health.livenessstate.showDetails | default "always" | quote }}
-  management.health.readinessstate.show-details: {{ .Values.management.health.readinessstate.showDetails | default "always" | quote }}
   management.endpoint.health.group.readiness.include: {{ .Values.management.endpoint.health.group.readiness.include | default "rabbit,diskSpace,mongo,ping" | quote }}
 
   # OpenTelemetry (OTLP) export (Vulcano 1.9.31+). All signals disabled by default.
