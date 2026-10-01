@@ -132,7 +132,7 @@ secret (consumed by dflconnector/filetransfer) never diverge — otherwise
 service auth fails with 403 and the connectors crash-loop.
 */}}
 {{- define "vulcano.serviceAdminPassword" -}}
-{{- .Values.auth.serviceAdminPassword | default "6qmY$JCaJ@6^#4V" -}}
+{{- include "vulcano.credential" (dict "ctx" . "value" .Values.auth.serviceAdminPassword "key" "service-admin-password" "leaked" "6qmY$JCaJ@6^#4V") -}}
 {{- end }}
 
 {{/*
@@ -212,12 +212,36 @@ license-key
 {{/*
 Auth token-signing secret.
 Stored in a Secret (never the ConfigMap) so the key that signs auth tokens
-isn't world-readable. Same default as before to preserve behaviour; point at
-an externally managed Secret via auth.secretExistingSecret to keep it out of
-values.yaml/Git.
+isn't world-readable. Point at an externally managed Secret via
+auth.secretExistingSecret to keep it out of values.yaml/Git.
 */}}
 {{- define "vulcano.authSecret" -}}
-{{- .Values.auth.secret | default "XKv%Y$gVugN6!6" -}}
+{{- include "vulcano.credential" (dict "ctx" . "value" .Values.auth.secret "key" "auth-secret" "leaked" "XKv%Y$gVugN6!6") -}}
+{{- end }}
+
+{{/*
+A chart-managed credential: the explicit value, else the one already stored in
+vulcano-credentials, else a random one. The defaults earlier chart versions shipped
+are public, so they are refused as a value and replaced when found stored.
+*/}}
+{{- define "vulcano.credential" -}}
+{{- if .value -}}
+{{- if eq (toString .value) .leaked -}}
+{{- fail (printf "%s: the value earlier chart versions shipped as default is public; set a new one" .key) -}}
+{{- end -}}
+{{- .value -}}
+{{- else -}}
+{{- $stored := "" -}}
+{{- $secret := lookup "v1" "Secret" (include "vulcano.namespace" .ctx) "vulcano-credentials" -}}
+{{- if and $secret $secret.data (hasKey $secret.data .key) -}}
+{{- $stored = index $secret.data .key | b64dec -}}
+{{- end -}}
+{{- if and $stored (ne $stored .leaked) -}}
+{{- $stored -}}
+{{- else -}}
+{{- randAlphaNum 40 -}}
+{{- end -}}
+{{- end -}}
 {{- end }}
 
 {{- define "vulcano.authSecret.secretName" -}}
