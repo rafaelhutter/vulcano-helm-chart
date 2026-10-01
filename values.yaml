@@ -303,6 +303,32 @@ vulcano:
   #       name: my-secret
   #       key: secret-key
 
+  # -- Extra initContainers for the vulcano pod. Use `restartPolicy: Always` for a
+  # native sidecar (e.g. a FUSE client that mounts a cloud drive into a shared volume).
+  extraInitContainers: []
+  # - name: suite
+  #   image: moovit/suite-sidecar:67.702.0
+  #   restartPolicy: Always
+  #   securityContext: {privileged: true, runAsUser: 0, runAsNonRoot: false}
+  #   volumeMounts:
+  #     - name: suite
+  #       mountPath: /mnt/suite
+  #       mountPropagation: Bidirectional
+
+  # -- Extra pod volumes for the vulcano pod (any volume type, e.g. emptyDir).
+  extraVolumes: []
+  # - name: suite
+  #   emptyDir: {}
+
+  # -- Extra volumeMounts for the vulcano container, e.g. a sidecar's FUSE mount.
+  extraVolumeMounts: []
+  # - name: suite
+  #   mountPath: /Volumes/suite
+  #   mountPropagation: HostToContainer
+
+  # -- Pod terminationGracePeriodSeconds; null keeps the Kubernetes default (30).
+  terminationGracePeriodSeconds: null
+
   graphicGenerator:
     rendition:
       # -- Comma-separated list of named output formats produced by the

@@ -29,6 +29,9 @@ spec:
         app: vulcano
     spec:
       serviceAccountName: {{ include "vulcano.serviceAccountName" . }}
+      {{- with .Values.vulcano.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ . }}
+      {{- end }}
       {{- if .Values.securityContext }}
       securityContext:
         {{- toYaml .Values.securityContext | nindent 8 }}
@@ -39,6 +42,11 @@ spec:
         {{- range .Values.imagePullSecrets.secrets }}
         - name: {{ .name }}
         {{- end }}
+      {{- end }}
+
+      {{- with .Values.vulcano.extraInitContainers }}
+      initContainers:
+        {{- toYaml . | nindent 8 }}
       {{- end }}
 
       containers:
@@ -244,6 +252,9 @@ spec:
               mountPath: /etc/certs
               readOnly: true
             {{- end }}
+            {{- with .Values.vulcano.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
 
       volumes:
         - name: data
@@ -264,6 +275,9 @@ spec:
         - name: custom-certificates
           secret:
             secretName: {{ .Values.folders.customCertificatesSecret }}
+        {{- end }}
+        {{- with .Values.vulcano.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
         {{- end }}
 
       {{- if .Values.nodeSelector }}

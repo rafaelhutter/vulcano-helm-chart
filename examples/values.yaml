@@ -154,6 +154,12 @@ vulcano:
   # media:
   #   dockerHighresPath: ""         # internal Docker path override for high-resolution media
 
+  # -- Pod extensions (optional), e.g. a FUSE sidecar sharing a mount with vulcano
+  # extraInitContainers: []         # restartPolicy: Always = native sidecar
+  # extraVolumes: []
+  # extraVolumeMounts: []           # mounts in the vulcano container
+  # terminationGracePeriodSeconds: 300
+
 # -----------------------------------------------------------
 # 4. AUTHENTICATION
 # -----------------------------------------------------------

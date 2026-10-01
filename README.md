@@ -1,6 +1,6 @@
 # vulcano
 
-![Version: 1.9.2](https://img.shields.io/badge/Version-1.9.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2026.1.22](https://img.shields.io/badge/AppVersion-2026.1.22-informational?style=flat-square)
+![Version: 1.10.0](https://img.shields.io/badge/Version-1.10.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2026.1.22](https://img.shields.io/badge/AppVersion-2026.1.22-informational?style=flat-square)
 
 Vulcano - Complete application deployment with MongoDB, RabbitMQ, and optional CSI driver
 
@@ -777,6 +777,33 @@ vulcano:
 
 > SMB-CSI provisioning (`smbCsi.enabled`) only applies to the primary PVC. For SMB-backed extras, provision the PV/PVC yourself (e.g. via `extraObjects`) and reference it with `existingClaim`.
 
+#### Sidecars / FUSE mounts (`extraInitContainers`)
+
+`vulcano.extraInitContainers`, `vulcano.extraVolumes` and `vulcano.extraVolumeMounts` are passed through verbatim to the vulcano pod. An initContainer with `restartPolicy: Always` runs as a [native sidecar](https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/) (Kubernetes 1.29+): it starts before vulcano and stops after it. A FUSE client (e.g. a cloud drive) can mount into a shared `emptyDir` with `Bidirectional` propagation, which vulcano sees via `HostToContainer`:
+
+```yaml
+vulcano:
+  terminationGracePeriodSeconds: 300   # room for the sidecar to flush uploads
+  extraInitContainers:
+    - name: cloud-drive
+      image: my-registry/fuse-client:1.0
+      restartPolicy: Always
+      securityContext: {privileged: true, runAsUser: 0, runAsNonRoot: false}  # needed for Bidirectional
+      volumeMounts:
+        - name: cloud-drive
+          mountPath: /mnt/drive
+          mountPropagation: Bidirectional
+  extraVolumes:
+    - name: cloud-drive
+      emptyDir: {}
+  extraVolumeMounts:
+    - name: cloud-drive
+      mountPath: /Volumes/drive
+      mountPropagation: HostToContainer
+```
+
+> The sidecar must unmount on SIGTERM; a FUSE mount left behind keeps the pod stuck in `Terminating`.
+
 ### Optional sidekick Deployments
 
 The chart can deploy two optional companion services in the same release as the Vulcano backend. Both are off by default — flip `<component>.enabled: true` to bring them up.
@@ -1121,6 +1148,9 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | vulcano.createAssetInterceptor | string | `""` | HTTP endpoint URL that will be called when a new asset is created |
 | vulcano.enabled | bool | `true` |  |
 | vulcano.extraEnvVars | list | `[]` | Additional environment variables injected into the vulcano container. Useful for settings the chart does not expose directly. |
+| vulcano.extraInitContainers | list | `[]` | Extra initContainers for the vulcano pod. Use `restartPolicy: Always` for a native sidecar (e.g. a FUSE client that mounts a cloud drive into a shared volume). |
+| vulcano.extraVolumeMounts | list | `[]` | Extra volumeMounts for the vulcano container, e.g. a sidecar's FUSE mount. |
+| vulcano.extraVolumes | list | `[]` | Extra pod volumes for the vulcano pod (any volume type, e.g. emptyDir). |
 | vulcano.folder.createUserFolder | string | `"false"` | Enable creation of user-specific folders for organizing generated assets |
 | vulcano.folder.globalParent | string | `""` | Global parent folder path component inserted in generated asset folder structure when user folders are enabled |
 | vulcano.frontend.enableTimecodeForAssets | string | `"false"` | If enabled, a Timecode input will appear in the PreferenceView for assets |
@@ -1187,6 +1217,7 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | vulcano.storage.storageClass | string | `"longhorn"` | Storage class for the PVC (leave empty for cluster default, set to "-" to omit storageClassName entirely) |
 | vulcano.strategy | string | `""` | Deployment update strategy. Leave empty for auto-detect (recommended): the chart picks "RollingUpdate" when ALL volumes are ReadWriteMany, and falls back to "Recreate" if any volume is ReadWriteOnce – otherwise a rolling update would hit a Multi-Attach error when the new pod is scheduled on a different node than the old one. Volumes backed by an existingClaim are assumed ReadWriteMany. Set explicitly to "Recreate" or "RollingUpdate" to override. |
 | vulcano.subtitle | string | `""` | Custom subtitle text displayed in the web interface header |
+| vulcano.terminationGracePeriodSeconds | string | `nil` | Pod terminationGracePeriodSeconds; null keeps the Kubernetes default (30). |
 | vulcano.useCustomFileName | string | `"false"` | Allow users to specify custom filenames when creating assets instead of using auto-generated names |
 | vulcano.webconfig.disable | string | `"false"` | Disable the web-based configuration interface |
 

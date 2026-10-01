@@ -766,6 +766,33 @@ vulcano:
 
 > SMB-CSI provisioning (`smbCsi.enabled`) only applies to the primary PVC. For SMB-backed extras, provision the PV/PVC yourself (e.g. via `extraObjects`) and reference it with `existingClaim`.
 
+#### Sidecars / FUSE mounts (`extraInitContainers`)
+
+`vulcano.extraInitContainers`, `vulcano.extraVolumes` and `vulcano.extraVolumeMounts` are passed through verbatim to the vulcano pod. An initContainer with `restartPolicy: Always` runs as a [native sidecar](https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/) (Kubernetes 1.29+): it starts before vulcano and stops after it. A FUSE client (e.g. a cloud drive) can mount into a shared `emptyDir` with `Bidirectional` propagation, which vulcano sees via `HostToContainer`:
+
+```yaml
+vulcano:
+  terminationGracePeriodSeconds: 300   # room for the sidecar to flush uploads
+  extraInitContainers:
+    - name: cloud-drive
+      image: my-registry/fuse-client:1.0
+      restartPolicy: Always
+      securityContext: {privileged: true, runAsUser: 0, runAsNonRoot: false}  # needed for Bidirectional
+      volumeMounts:
+        - name: cloud-drive
+          mountPath: /mnt/drive
+          mountPropagation: Bidirectional
+  extraVolumes:
+    - name: cloud-drive
+      emptyDir: {}
+  extraVolumeMounts:
+    - name: cloud-drive
+      mountPath: /Volumes/drive
+      mountPropagation: HostToContainer
+```
+
+> The sidecar must unmount on SIGTERM; a FUSE mount left behind keeps the pod stuck in `Terminating`.
+
 ### Optional sidekick Deployments
 
 The chart can deploy two optional companion services in the same release as the Vulcano backend. Both are off by default — flip `<component>.enabled: true` to bring them up.
