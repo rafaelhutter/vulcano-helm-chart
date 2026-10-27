@@ -923,7 +923,7 @@ You don't need to configure anything to get both — the chart's `vulcano.mongod
 | folders.media.extension | string | `".mov"` | Comma-separated list of allowed media file extensions for processing |
 | folders.media.folder | string | `"/data/highres"` | Root directory path where generated high-resolution media files are stored |
 | folders.media.templatesFolder | string | `"/data/highres_templates"` | Directory path containing After Effects project templates and MOGRT files |
-| folders.output.deletedFolder | string | `"/highres_deleted"` | Folder path where deleted high-resolution rendered files are moved before permanent deletion |
+| folders.output.deletedFolder | string | `"/data/highres_deleted"` | Folder path where deleted high-resolution rendered files are moved before permanent deletion |
 | folders.pathMapRenderNode | string | `"Z:"` | Path mapping configuration for render nodes in distributed rendering setups |
 | folders.pathMapServer | string | `"/data"` | Server-side path mapping configuration for shared storage access |
 | folders.proxy | string | `"/data/lowres"` | Directory path where low-resolution proxy files are stored |

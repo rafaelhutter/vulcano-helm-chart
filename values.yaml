@@ -821,7 +821,7 @@ folders:
     templatesFolder: "/data/highres_templates"
   output:
     # -- Folder path where deleted high-resolution rendered files are moved before permanent deletion
-    deletedFolder: "/highres_deleted"
+    deletedFolder: "/data/highres_deleted"
   # -- Directory path where low-resolution proxy files are stored
   proxy: "/data/lowres"
   # -- Directory path where thumbnail images are stored
